@@ -1,8 +1,12 @@
+import pdb
 import sys
 # update your projecty root path before running
-sys.path.insert(0, '/path/to/nsga-net')
+from collections import defaultdict
+
+sys.path.insert(0, '/home/eladr/nsga-net_remote')
 
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 import time
 import logging
 import argparse
@@ -13,10 +17,12 @@ from search import train_search
 from search import micro_encoding
 from search import macro_encoding
 from search import nsganet as engine
-
+from sacred.observers import MongoObserver
+from sacred import Experiment
 from pymop.problem import Problem
 from pymoo.optimize import minimize
-
+from config import config_dict, set_config
+import pandas as pd
 parser = argparse.ArgumentParser("Multi-objetive Genetic Algorithm for NAS")
 parser.add_argument('--save', type=str, default='GA-BiObj', help='experiment name')
 parser.add_argument('--seed', type=int, default=0, help='random seed')
@@ -35,19 +41,24 @@ parser.add_argument('--n_offspring', type=int, default=40, help='number of offsp
 parser.add_argument('--init_channels', type=int, default=24, help='# of filters for first cell')
 parser.add_argument('--layers', type=int, default=11, help='equivalent with N = 3')
 parser.add_argument('--epochs', type=int, default=25, help='# of epochs to train during architecture search')
-args = parser.parse_args()
-args.save = 'search-{}-{}-{}'.format(args.save, args.search_space, time.strftime("%Y%m%d-%H%M%S"))
-utils.create_exp_dir(args.save)
 
 log_format = '%(asctime)s %(message)s'
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format=log_format, datefmt='%m/%d %I:%M:%S %p')
-fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
-fh.setFormatter(logging.Formatter(log_format))
-logging.getLogger().addHandler(fh)
+
 
 pop_hist = []  # keep track of every evaluated architecture
+ex = Experiment(f'NSGA-net_{config_dict()["nsga_strategy"]}_{config_dict()["dataset"]}_{config_dict()["data_type"]}')
+ex.observers.append(MongoObserver.create(url='mongodb://localhost/EEGNAS', db_name='EEGNAS'))
+ex.add_config(config_dict())
 
+ITERATIONS = 1
+
+def strfdelta(tdelta, fmt):
+    d = {"days": tdelta.days}
+    d["hours"], rem = divmod(tdelta.seconds, 3600)
+    d["minutes"], d["seconds"] = divmod(rem, 60)
+    return fmt.format(**d)
 
 # ---------------------------------------------------------------------------------------------------------
 # Define your NAS Problem
@@ -90,8 +101,10 @@ class NAS(Problem):
 
             # all objectives assume to be MINIMIZED !!!!!
             objs[i, 0] = 100 - performance['valid_acc']
+            print(f'valid acc - {performance["valid_acc"]}')
             objs[i, 1] = performance['flops']
-
+            ex.log_scalar("arch_valid_acc", performance['valid_acc'], arch_id)
+            ex.log_scalar("arch_flops", performance['flops'], arch_id)
             self._n_evaluated += 1
 
         out["F"] = objs
@@ -114,12 +127,22 @@ def do_every_generations(algorithm):
     logging.info("population error: best = {}, mean = {}, "
                  "median = {}, worst = {}".format(np.min(pop_obj[:, 0]), np.mean(pop_obj[:, 0]),
                                                   np.median(pop_obj[:, 0]), np.max(pop_obj[:, 0])))
+    ex.log_scalar("best_error", np.min(pop_obj[:, 0]), gen)
     logging.info("population complexity: best = {}, mean = {}, "
                  "median = {}, worst = {}".format(np.min(pop_obj[:, 1]), np.mean(pop_obj[:, 1]),
                                                   np.median(pop_obj[:, 1]), np.max(pop_obj[:, 1])))
+    ex.log_scalar("best_complexity", np.min(pop_obj[:, 1]), gen)
 
 
+@ex.main
 def main():
+    args = parser.parse_args(config_dict()['arg_string'].split())
+    args.save = 'search-{}-{}-{}'.format(args.save, args.search_space, time.strftime("%Y%m%d-%H%M%S"))
+    utils.create_exp_dir(args.save)
+    fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
+    fh.setFormatter(logging.Formatter(log_format))
+    logging.getLogger().addHandler(fh)
+
     np.random.seed(args.seed)
     logging.info("args = %s", args)
 
@@ -158,8 +181,37 @@ def main():
                    callback=do_every_generations,
                    termination=('n_gen', args.n_gens))
 
-    return
+    return (100 - np.min(res.pop.get('F')[:, 0])) / 100
 
 
-if __name__ == "__main__":
-    main()
+def add_exp(all_exps, run, dataset, iteration):
+    all_exps['algorithm'].append(f'NSGA')
+    all_exps['architecture'].append('best')
+    all_exps['measure'].append('accuracy')
+    all_exps['dataset'].append(dataset)
+    all_exps['iteration'].append(iteration)
+    all_exps['result'].append(run.result)
+    all_exps['runtime'].append(strfdelta(run.stop_time - run.start_time, '{hours}:{minutes}:{seconds}'))
+    all_exps['omniboard_id'].append(run._id)
+
+
+if __name__ == '__main__':
+    all_exps = defaultdict(list)
+    for iteration in range(1, ITERATIONS+1):
+        for dataset in sys.argv[1].split(','):
+            x_train = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/X_train.npy')
+            x_test = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/X_test.npy')
+            y_train = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/y_train.npy')
+            y_test = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/y_test.npy')
+            set_config('dataset', dataset)
+            set_config('x_train', x_train)
+            set_config('x_test', x_test)
+            set_config('y_train', y_train)
+            set_config('y_test', y_test)
+            set_config('INPUT_HEIGHT', x_train.shape[2])
+            set_config('n_channels', x_train.shape[1])
+            set_config('n_classes', len(np.unique(y_train)))
+            ex.add_config({'DEFAULT':{'dataset': dataset}})
+            run = ex.run(options={'--name': f'NSGA_{dataset}_macro'})
+            add_exp(all_exps, run, dataset, iteration)
+            pd.DataFrame(all_exps).to_csv(f'reports/{run._id}.csv', index=False)

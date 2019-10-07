@@ -7,6 +7,16 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 
 
+KERNEL_SIZE_3 = (3,1)
+KERNEL_SIZE_2 = (2,1)
+KERNEL_SIZE_7 = (7,1)
+PADDING_1 = (1,0)
+
+# KERNEL_SIZE_3 = 3
+# KERNEL_SIZE_2 = 2
+# KERNEL_SIZE_7 = 7
+# PADDING_1 = 1
+
 class Decoder(ABC):
     """
     Abstract genome decoder class.
@@ -98,7 +108,7 @@ class ChannelBasedDecoder(Decoder):
         for phase, repeat in zip(phases, self._repeats):
             for _ in range(repeat):
                 layers.append(phase)
-            layers.append(nn.MaxPool2d(kernel_size=2, stride=2))  # TODO: Generalize this, or consider a new genome.
+            layers.append(nn.MaxPool2d(kernel_size=KERNEL_SIZE_2, stride=KERNEL_SIZE_2))  # TODO: Generalize this, or consider a new genome.
 
         layers.append(last_phase)
         return layers
@@ -170,13 +180,13 @@ class LOSHourGlassDecoder(HourGlassDecoder, nn.Module):
 
         # Initial resolution reducing, takes 256 x 256 to 64 x 64
         self.initial = nn.Sequential(
-            nn.Conv2d(3, self.pre_hourglass_channels, kernel_size=7, stride=2, padding=3, bias=True),
+            nn.Conv2d(3, self.pre_hourglass_channels, kernel_size=KERNEL_SIZE_7, stride=KERNEL_SIZE_2, padding=KERNEL_SIZE_3, bias=True),
             nn.BatchNorm2d(self.pre_hourglass_channels),
             nn.ReLU(inplace=True),
             HourGlassResidual(self.pre_hourglass_channels, self.pre_hourglass_channels)
         )
 
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.pool = nn.MaxPool2d(kernel_size=KERNEL_SIZE_2, stride=KERNEL_SIZE_2)
 
         self.secondary = nn.Sequential(
             HourGlassResidual(self.pre_hourglass_channels, self.pre_hourglass_channels),
@@ -395,7 +405,7 @@ class LOSHourGlassBlock(nn.Module):
         elif prev_node.resolution > next_node.resolution:
             # We need to downsample.
             s = int(prev_node.resolution / next_node.resolution)
-            return nn.MaxPool2d(kernel_size=2, stride=s)
+            return nn.MaxPool2d(kernel_size=KERNEL_SIZE_2, stride=s)
 
         else:
             # We need to upsample.
@@ -557,7 +567,7 @@ class HourGlassResidual(nn.Module):
             nn.Conv2d(in_channels, out_channels // 2, kernel_size=1, bias=True),
             nn.BatchNorm2d(out_channels // 2),
             nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels // 2, out_channels // 2, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.Conv2d(out_channels // 2, out_channels // 2, kernel_size=KERNEL_SIZE_3, stride=1, padding=PADDING_1, bias=True),
             nn.BatchNorm2d(out_channels // 2),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels // 2, out_channels, kernel_size=1, bias=True),
@@ -623,7 +633,7 @@ class ResidualPhase(nn.Module):
         super(ResidualPhase, self).__init__()
 
         self.channel_flag = in_channels != out_channels  # Flag to tell us if we need to increase channel size.
-        self.first_conv = nn.Conv2d(in_channels, out_channels, kernel_size=1 if idx != 0 else 3, stride=1, bias=False)
+        self.first_conv = nn.Conv2d(in_channels, out_channels, kernel_size=1 if idx != 0 else KERNEL_SIZE_3, stride=1, bias=False)
         self.dependency_graph = ResidualPhase.build_dependency_graph(gene)
 
         if preact:
@@ -737,7 +747,7 @@ class ResidualNode(nn.Module):
     """
 
     def __init__(self, in_channels, out_channels, stride=1,
-                 kernel_size=3, padding=1, bias=False):
+                 kernel_size=KERNEL_SIZE_3, padding=PADDING_1, bias=False):
         """
         Constructor.
         Default arguments preserve dimensionality of input.
@@ -773,7 +783,7 @@ class PreactResidualNode(nn.Module):
     """
 
     def __init__(self, in_channels, out_channels, stride=1,
-                 kernel_size=3, padding=1, bias=False):
+                 kernel_size=KERNEL_SIZE_3, padding=PADDING_1, bias=False):
         """
         Constructor.
         Default arguments preserve dimensionality of input.
@@ -925,7 +935,7 @@ class DensePhase(nn.Module):
 
         self.in_channel_flag = in_channels != out_channels  # Flag to tell us if we need to increase channel size.
         self.out_channel_flag = out_channels != DenseNode.t
-        self.first_conv = nn.Conv2d(in_channels, out_channels, kernel_size=1 if idx != 0 else 3, stride=1, bias=False)
+        self.first_conv = nn.Conv2d(in_channels, out_channels, kernel_size=1 if idx != 0 else KERNEL_SIZE_3, stride=1, bias=False)
         self.dependency_graph = ResidualPhase.build_dependency_graph(gene)
 
         channel_adjustment = 0
@@ -1022,7 +1032,7 @@ class DenseNode(nn.Module):
             nn.Conv2d(in_channels, self.t * self.k, kernel_size=1, bias=False),
             nn.BatchNorm2d(self.t * self.k),
             nn.ReLU(inplace=True),
-            nn.Conv2d(self.t * self.k, self.t, kernel_size=3, stride=1, padding=1, bias=False)
+            nn.Conv2d(self.t * self.k, self.t, kernel_size=KERNEL_SIZE_3, stride=1, padding=PADDING_1, bias=False)
         )
 
     def forward(self, x):

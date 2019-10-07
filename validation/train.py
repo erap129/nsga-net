@@ -91,10 +91,10 @@ def main():
     valid_data = torchvision.datasets.CIFAR10(root=args.data, train=False, download=True, transform=valid_transform)
 
     train_queue = torch.utils.data.DataLoader(
-        train_data, batch_size=args.batch_size, shuffle=True, pin_memory=True, num_workers=2)
+        train_data, batch_size=args.batch_size, shuffle=True, pin_memory=True, num_workers=1)
 
     valid_queue = torch.utils.data.DataLoader(
-        valid_data, batch_size=128, shuffle=False, pin_memory=True, num_workers=2)
+        valid_data, batch_size=128, shuffle=False, pin_memory=True, num_workers=1)
 
     # classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 

@@ -1,9 +1,14 @@
 from __future__ import print_function
+
+import torch
+
 from PIL import Image
 import os
 import os.path
 import numpy as np
 import sys
+from config import config_dict
+
 if sys.version_info[0] == 2:
     import cPickle as pickle
 else:
@@ -14,6 +19,8 @@ import torch.utils.data as data
 
 import errno
 import hashlib
+FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+# from config import config_dict
 
 
 def check_integrity(fpath, md5):
@@ -131,8 +138,14 @@ class CIFAR10(data.Dataset):
                 fo.close()
 
             self.train_data = np.concatenate(self.train_data)
-            self.train_data = self.train_data.reshape((40000, 3, 32, 32))
-            self.train_data = self.train_data.transpose((0, 2, 3, 1))  # convert to HWC
+
+            # self.train_data = np.load(f'../data/{config_dict["dataset"]}_{config_dict["data_type"]}/X_train_{config_dict["dataset"]}.npy')
+            self.train_data = np.load(f'{FILE_PATH}/../data/{config_dict()["dataset"]}/X_train.npy')
+            if self.train_data.ndim == 3:
+                self.train_data = self.train_data[:, :, :, None]
+            # self.train_labels = np.load(f'../data/{config_dict["dataset"]}_{config_dict["data_type"]}/y_train_{config_dict["dataset"]}.npy').tolist()
+            self.train_labels = np.load(f'{FILE_PATH}/../data/{config_dict()["dataset"]}/y_train.npy')
+
         else:
             f = self.test_list[0][0]
             file = os.path.join(self.root, self.base_folder, f)
@@ -147,8 +160,14 @@ class CIFAR10(data.Dataset):
             else:
                 self.test_labels = entry['fine_labels']
             fo.close()
-            self.test_data = self.test_data.reshape((10000, 3, 32, 32))
-            self.test_data = self.test_data.transpose((0, 2, 3, 1))  # convert to HWC
+
+            # self.test_data = np.load(f'../data/{config_dict["dataset"]}_{config_dict["data_type"]}/X_test_{config_dict["dataset"]}.npy')
+            self.test_data = np.load(f'{FILE_PATH}/../data/{config_dict()["dataset"]}/X_test.npy')
+            if self.test_data.ndim == 3:
+                self.test_data = self.test_data[:, :, :, None]
+            # self.test_labels = np.load(f'../data/{config_dict["dataset"]}_{config_dict["data_type"]}/X_test_{config_dict["dataset"]}.npy').tolist()
+            self.test_labels = np.load(f'{FILE_PATH}/../data/{config_dict()["dataset"]}/y_test.npy')
+
 
     def __getitem__(self, index):
         """
@@ -165,11 +184,12 @@ class CIFAR10(data.Dataset):
 
         # doing this so that it is consistent with all other datasets
         # to return a PIL Image
-        img = Image.fromarray(img)
-
+        # img = Image.fromarray(img)
+        #
         if self.transform is not None:
-            img = self.transform(img)
-
+            # img = self.transform(img)
+            img = torch.from_numpy(img).float()
+        #
         if self.target_transform is not None:
             target = self.target_transform(target)
 

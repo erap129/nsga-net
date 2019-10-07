@@ -23,7 +23,7 @@ from misc import utils
 from search import micro_encoding
 from search import macro_encoding
 from misc.flops_counter import add_flops_counting_methods
-
+from config import config_dict
 
 device = 'cuda'
 
@@ -43,7 +43,8 @@ def main(genome, epochs, search_space='micro',
     # logging.getLogger().addHandler(fh)
 
     # ---- parameter values setting ----- #
-    CIFAR_CLASSES = 10
+    CIFAR_CLASSES = config_dict()['n_classes']
+    INPUT_CHANNELS = config_dict()['n_channels']
     learning_rate = 0.025
     momentum = 0.9
     weight_decay = 3e-4
@@ -65,10 +66,11 @@ def main(genome, epochs, search_space='micro',
         model = Network(init_channels, CIFAR_CLASSES, layers, auxiliary, genotype)
     elif search_space == 'macro':
         genotype = macro_encoding.decode(genome)
-        channels = [(3, init_channels),
+        channels = [(INPUT_CHANNELS, init_channels),
                     (init_channels, 2*init_channels),
                     (2*init_channels, 4*init_channels)]
-        model = EvoNetwork(genotype, channels, CIFAR_CLASSES, (32, 32), decoder='residual')
+        model = EvoNetwork(genotype, channels, CIFAR_CLASSES, (config_dict()['INPUT_HEIGHT'], config_dict()['INPUT_WIDTH']), decoder='residual')
+        print
     else:
         raise NameError('Unknown search space type')
 
@@ -126,12 +128,12 @@ def main(genome, epochs, search_space='micro',
     train_queue = torch.utils.data.DataLoader(
         train_data, batch_size=batch_size,
         # sampler=torch.utils.data.sampler.SubsetRandomSampler(indices[:split]),
-        pin_memory=True, num_workers=4)
+        pin_memory=True, num_workers=1)
 
     valid_queue = torch.utils.data.DataLoader(
         valid_data, batch_size=batch_size,
         # sampler=torch.utils.data.sampler.SubsetRandomSampler(indices[split:num_train]),
-        pin_memory=True, num_workers=4)
+        pin_memory=True, num_workers=1)
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, int(epochs))
 
@@ -150,7 +152,7 @@ def main(genome, epochs, search_space='micro',
     model = add_flops_counting_methods(model)
     model.eval()
     model.start_flops_count()
-    random_data = torch.randn(1, 3, 32, 32)
+    random_data = torch.randn(1, INPUT_CHANNELS, config_dict()['INPUT_HEIGHT'], config_dict()['INPUT_WIDTH'])
     model(torch.autograd.Variable(random_data).to(device))
     n_flops = np.round(model.compute_average_flops_cost() / 1e6, 4)
     logging.info('flops = %f', n_flops)

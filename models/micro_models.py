@@ -15,6 +15,7 @@ DEFAULT_PADDINGS = {
     'conv_7x1_1x7': 3,
 }
 
+INPUT_CHANNELS = 22
 
 class Cell(nn.Module):
 
@@ -138,7 +139,7 @@ class NetworkCIFAR(nn.Module):
         stem_multiplier = 3
         C_curr = stem_multiplier * C
         self.stem = nn.Sequential(
-            nn.Conv2d(3, C_curr, 3, padding=1, bias=False),
+            nn.Conv2d(INPUT_CHANNELS, C_curr, 3, padding=1, bias=False),
             nn.BatchNorm2d(C_curr)
         )
 
