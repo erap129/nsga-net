@@ -1,16 +1,28 @@
 import torch
 import torch.nn as nn
 
+
+IMG = False
+
+def get_size(i, one):
+    if IMG:
+        return i
+    if one:
+        return (i, 1)
+    else:
+        return (i, 0)
+
+
 OPS = {
     'none': lambda C, stride, affine: Zero(stride),
-    'avg_pool_3x3': lambda C, stride, affine: nn.AvgPool2d(3, stride=stride, padding=1, count_include_pad=False),
-    'max_pool_3x3': lambda C, stride, affine: nn.MaxPool2d(3, stride=stride, padding=1),
+    'avg_pool_3x3': lambda C, stride, affine: nn.AvgPool2d(get_size(3, True), stride=stride, padding=get_size(1, False), count_include_pad=False),
+    'max_pool_3x3': lambda C, stride, affine: nn.MaxPool2d(get_size(3, True), stride=stride, padding=get_size(1, False)),
     'skip_connect': lambda C, stride, affine: Identity() if stride == 1 else FactorizedReduce(C, C, affine=affine),
-    'sep_conv_3x3': lambda C, stride, affine: SepConv(C, C, 3, stride, 1, affine=affine),
-    'sep_conv_5x5': lambda C, stride, affine: SepConv(C, C, 5, stride, 2, affine=affine),
-    'sep_conv_7x7': lambda C, stride, affine: SepConv(C, C, 7, stride, 3, affine=affine),
-    'dil_conv_3x3': lambda C, stride, affine: DilConv(C, C, 3, stride, 2, 2, affine=affine),
-    'dil_conv_5x5': lambda C, stride, affine: DilConv(C, C, 5, stride, 4, 2, affine=affine),
+    'sep_conv_3x3': lambda C, stride, affine: SepConv(C, C, get_size(3, True), stride, get_size(1, False), affine=affine),
+    'sep_conv_5x5': lambda C, stride, affine: SepConv(C, C, get_size(5, True), stride, get_size(2, False), affine=affine),
+    'sep_conv_7x7': lambda C, stride, affine: SepConv(C, C, get_size(7, True), stride, get_size(3, False), affine=affine),
+    'dil_conv_3x3': lambda C, stride, affine: DilConv(C, C, get_size(3, True), stride, get_size(2, False), get_size(2, True), affine=affine),
+    'dil_conv_5x5': lambda C, stride, affine: DilConv(C, C, get_size(5, True), stride, get_size(4, False), get_size(2, True), affine=affine),
     'conv_7x1_1x7': lambda C, stride, affine: nn.Sequential(
         nn.ReLU(inplace=False),
         nn.Conv2d(C, C, (1, 7), stride=(1, stride), padding=(0, 3), bias=False),
@@ -102,7 +114,10 @@ class FactorizedReduce(nn.Module):
 
     def forward(self, x):
         x = self.relu(x)
-        out = torch.cat([self.conv_1(x), self.conv_2(x[:, :, 1:, 1:])], dim=1)
+        if IMG:
+            out = torch.cat([self.conv_1(x), self.conv_2(x[:, :, 1:, 1:])], dim=1)
+        else:
+            out = torch.cat([self.conv_1(x), self.conv_2(x[:, :, :, :])], dim=1)
         out = self.bn(out)
         return out
 

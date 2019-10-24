@@ -1,6 +1,7 @@
 import pdb
 import sys
 # update your projecty root path before running
+import traceback
 from collections import defaultdict
 
 sys.path.insert(0, '/home/eladr/nsga-net_remote')
@@ -46,13 +47,18 @@ log_format = '%(asctime)s %(message)s'
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format=log_format, datefmt='%m/%d %I:%M:%S %p')
 
+ITERATIONS = 2
+SERVER_IP = '132.72.80.67'
 
 pop_hist = []  # keep track of every evaluated architecture
 ex = Experiment(f'NSGA-net_{config_dict()["nsga_strategy"]}_{config_dict()["dataset"]}_{config_dict()["data_type"]}')
-ex.observers.append(MongoObserver.create(url='mongodb://localhost/EEGNAS', db_name='EEGNAS'))
+ex.observers.append(MongoObserver.create(url=f'mongodb://{SERVER_IP}/EEGNAS', db_name='EEGNAS'))
 ex.add_config(config_dict())
 
-ITERATIONS = 1
+
+# dataset = ArticularyWordRecognition,AtrialFibrillation,BasicMotions,CharacterTrajectories,Cricket,DuckDuckGeese,EigenWorms,Epilepsy,ERing,EthanolConcentration,FaceDetection,FingerMovements,HandMovementDirection,Handwriting,Heartbeat,InsectWingbeat,JapaneseVowels,Libras,LSST,MotorImagery,NATOPS,PEMS-SF,PenDigits,PhonemeSpectra,RacketSports,SelfRegulationSCP1,SelfRegulationSCP2,SpokenArabicDigits,StandWalkJump,UWaveGestureLibrary
+# EEG_dataset_1 = BCI_IV_2a,BCI_IV_2b,HG
+# EEG dataset_2 = NER15,Opportunity,MentalImageryLongWords
 
 def strfdelta(tdelta, fmt):
     d = {"days": tdelta.days}
@@ -137,6 +143,7 @@ def do_every_generations(algorithm):
 @ex.main
 def main():
     args = parser.parse_args(config_dict()['arg_string'].split())
+    args.search_space = sys.argv[1]
     args.save = 'search-{}-{}-{}'.format(args.save, args.search_space, time.strftime("%Y%m%d-%H%M%S"))
     utils.create_exp_dir(args.save)
     fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
@@ -196,22 +203,30 @@ def add_exp(all_exps, run, dataset, iteration):
 
 
 if __name__ == '__main__':
+    first = True
     all_exps = defaultdict(list)
-    for iteration in range(1, ITERATIONS+1):
-        for dataset in sys.argv[1].split(','):
-            x_train = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/X_train.npy')
-            x_test = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/X_test.npy')
-            y_train = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/y_train.npy')
-            y_test = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/y_test.npy')
-            set_config('dataset', dataset)
-            set_config('x_train', x_train)
-            set_config('x_test', x_test)
-            set_config('y_train', y_train)
-            set_config('y_test', y_test)
-            set_config('INPUT_HEIGHT', x_train.shape[2])
-            set_config('n_channels', x_train.shape[1])
-            set_config('n_classes', len(np.unique(y_train)))
-            ex.add_config({'DEFAULT':{'dataset': dataset}})
-            run = ex.run(options={'--name': f'NSGA_{dataset}_macro'})
-            add_exp(all_exps, run, dataset, iteration)
-            pd.DataFrame(all_exps).to_csv(f'reports/{run._id}.csv', index=False)
+    for iteration in range(1, ITERATIONS+2):
+        for dataset in sys.argv[2].split(','):
+            try:
+                x_train = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/X_train.npy')
+                x_test = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/X_test.npy')
+                y_train = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/y_train.npy')
+                y_test = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/y_test.npy')
+                set_config('dataset', dataset)
+                set_config('x_train', x_train)
+                set_config('x_test', x_test)
+                set_config('y_train', y_train)
+                set_config('y_test', y_test)
+                set_config('INPUT_HEIGHT', x_train.shape[2])
+                set_config('n_channels', x_train.shape[1])
+                set_config('n_classes', len(np.unique(y_train)))
+                ex.add_config({'DEFAULT':{'dataset': dataset}})
+                run = ex.run(options={'--name': f'NSGA_{dataset}_macro'})
+                add_exp(all_exps, run, dataset, iteration)
+                if first:
+                    first_run_id = run._id
+                    first = False
+                pd.DataFrame(all_exps).to_csv(f'reports/{first_run_id}.csv', index=False)
+            except Exception as e:
+                print(f'failed dataset {dataset} iteration {iteration}')
+                traceback.print_exc()

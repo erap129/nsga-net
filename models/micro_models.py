@@ -1,3 +1,4 @@
+from config import config_dict
 from models.micro_operations import *
 from misc.utils import drop_path
 
@@ -139,7 +140,7 @@ class NetworkCIFAR(nn.Module):
         stem_multiplier = 3
         C_curr = stem_multiplier * C
         self.stem = nn.Sequential(
-            nn.Conv2d(INPUT_CHANNELS, C_curr, 3, padding=1, bias=False),
+            nn.Conv2d(config_dict()['n_channels'], C_curr, (3, 1), padding=(1, 0), bias=False),
             nn.BatchNorm2d(C_curr)
         )
 
