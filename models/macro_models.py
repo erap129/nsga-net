@@ -85,7 +85,7 @@ def demo():
     """
     Demo creating a network.
     """
-    import validation.utils as utils
+    import misc.utils as utils
     genome = [[[1], [0, 0], [0, 1, 0], [0, 1, 1, 1], [1, 0, 0, 1, 1], [0]],
               [[0], [0, 0], [0, 1, 0], [0, 1, 0, 1], [1, 1, 1, 1, 1], [0]],
               [[0], [0, 1], [1, 0, 1], [1, 0, 1, 1], [1, 0, 0, 1, 1], [0]]]
@@ -93,7 +93,7 @@ def demo():
     channels = [(3, 128), (128, 128), (128, 128)]
 
     out_features = 10
-    data = torch.randn(16, 3, 32, 32)
+    data = torch.randn(16, 3, 32, 32)*100
     net = EvoNetwork(genome, channels, out_features, (32, 32), decoder='dense')
     print("param size = {}MB".format(utils.count_parameters_in_MB(net)))
     output = net(torch.autograd.Variable(data))

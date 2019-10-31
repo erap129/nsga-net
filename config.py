@@ -4,7 +4,8 @@ config = {
         'dataset': 'BCI_IV_2a',
         'data_type': 'normal',
         'nsga_strategy': 'macro',
-        'arg_string': '--search_space micro --init_channels 24 --n_gens 30'
+        'arg_string': '--search_space micro --init_channels 24 --n_gens 30',
+        'custom_cell_for_macro': True
         }
 
 

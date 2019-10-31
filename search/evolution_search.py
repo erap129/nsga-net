@@ -47,12 +47,11 @@ log_format = '%(asctime)s %(message)s'
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format=log_format, datefmt='%m/%d %I:%M:%S %p')
 
-ITERATIONS = 2
+ITERATIONS = 1
 SERVER_IP = '132.72.80.67'
 
 pop_hist = []  # keep track of every evaluated architecture
 ex = Experiment(f'NSGA-net_{config_dict()["nsga_strategy"]}_{config_dict()["dataset"]}_{config_dict()["data_type"]}')
-ex.observers.append(MongoObserver.create(url=f'mongodb://{SERVER_IP}/EEGNAS', db_name='EEGNAS'))
 ex.add_config(config_dict())
 
 
@@ -192,7 +191,7 @@ def main():
 
 
 def add_exp(all_exps, run, dataset, iteration):
-    all_exps['algorithm'].append(f'NSGA')
+    all_exps['algorithm'].append(f'NSGA_{sys.argv[1]}')
     all_exps['architecture'].append('best')
     all_exps['measure'].append('accuracy')
     all_exps['dataset'].append(dataset)
@@ -205,6 +204,8 @@ def add_exp(all_exps, run, dataset, iteration):
 if __name__ == '__main__':
     first = True
     all_exps = defaultdict(list)
+    if 'debug' not in sys.argv:
+        ex.observers.append(MongoObserver.create(url=f'mongodb://{SERVER_IP}/EEGNAS', db_name='EEGNAS'))
     for iteration in range(1, ITERATIONS+2):
         for dataset in sys.argv[2].split(','):
             try:
@@ -221,7 +222,7 @@ if __name__ == '__main__':
                 set_config('n_channels', x_train.shape[1])
                 set_config('n_classes', len(np.unique(y_train)))
                 ex.add_config({'DEFAULT':{'dataset': dataset}})
-                run = ex.run(options={'--name': f'NSGA_{dataset}_macro'})
+                run = ex.run(options={'--name': f'NSGA_{dataset}_{sys.argv[1]}'})
                 add_exp(all_exps, run, dataset, iteration)
                 if first:
                     first_run_id = run._id

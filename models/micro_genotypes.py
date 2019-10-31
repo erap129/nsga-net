@@ -154,5 +154,31 @@ NSGANet = Genotype(
     reduce_concat=[3, 4, 5, 6]
 )
 
+FaceDetection = Genotype(
+    normal=[
+        ('conv_7x1_1x7', 0),
+        ('max_pool_3x3', 0),
+        ('skip_connect', 2),
+        ('dil_conv_5x5', 1),
+        ('sep_conv_7x7', 3),
+        ('skip_connect', 2),
+        ('dil_conv_5x5', 0),
+        ('dil_conv_5x5', 3),
+        ('skip_connect', 3),
+        ('skip_connect', 0)],
+    normal_concat=[4, 5, 6],
+    reduce=[
+        ('avg_pool_3x3', 1),
+        ('sep_conv_5x5', 0),
+        ('avg_pool_3x3', 1),
+        ('avg_pool_3x3', 1),
+        ('skip_connect', 1),
+        ('skip_connect', 3),
+        ('sep_conv_5x5', 2),
+        ('sep_conv_3x3', 0),
+        ('max_pool_3x3', 1),
+        ('dil_conv_3x3', 4)],
+    reduce_concat=[5, 6])
+
 
 

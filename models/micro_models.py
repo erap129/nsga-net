@@ -1,4 +1,9 @@
+from copy import deepcopy
+
+from torch.nn import Sequential, Conv2d
+
 from config import config_dict
+from models import micro_genotypes
 from models.micro_operations import *
 from misc.utils import drop_path
 
@@ -17,6 +22,12 @@ DEFAULT_PADDINGS = {
 }
 
 INPUT_CHANNELS = 22
+
+
+def cell_1on1(channel_num, _):
+    cell = Cell(micro_genotypes.FaceDetection, channel_num, channel_num, channel_num, False, False)
+    return Sequential(cell, Conv2d(channel_num * cell.multiplier, channel_num, kernel_size=1))
+
 
 class Cell(nn.Module):
 
@@ -56,7 +67,11 @@ class Cell(nn.Module):
             self._ops += [op]
         self._indices = indices
 
-    def forward(self, s0, s1, drop_prob):
+    def forward(self, s0, s1=None, drop_prob=None):
+        if s1 is None:
+            s1 = s0
+        if drop_prob is None:
+            drop_prob = 0
         s0 = self.preprocess0(s0)
         s1 = self.preprocess1(s1)
 
@@ -288,11 +303,13 @@ class NetworkImageNet(nn.Module):
 
 
 if __name__ == '__main__':
-    import validation.utils as utils
+    import misc.utils as utils
     import models.micro_genotypes as genotypes
 
-    genome = genotypes.NSGANet
+    genome = genotypes.DARTS
     # model = AlterPyramidNetworkCIFAR(30, 10, 20, True, genome, 6, SE=False)
+
+    data = torch.randn(16, 3, 32, 32)
     model = PyramidNetworkCIFAR(48, 10, 20, True, genome, 22, SE=True)
     # model = NetworkCIFAR(34, 10, 20, True, genome, SE=True)
     # model = GradPyramidNetworkCIFAR(34, 10, 20, True, genome, 4)
@@ -300,3 +317,9 @@ if __name__ == '__main__':
 
     # calculate number of trainable parameters
     print("param size = {}MB".format(utils.count_parameters_in_MB(model)))
+
+    output = model(torch.autograd.Variable(data))
+    cell = Cell(genome, 3, 3, 3, False, False)
+
+    output2 = cell(torch.autograd.Variable(data))
+    print(output.shape)
