@@ -4,11 +4,9 @@ import sys
 import traceback
 from collections import defaultdict
 
+sys.path.insert(0, '/home/eladr/nsga-net_remote')
 from models.macro_decoder import ResidualNode
 from search.micro_encoding import make_micro_creator
-
-sys.path.insert(0, '/home/eladr/nsga-net_remote')
-
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 import time

@@ -105,7 +105,7 @@ class CIFAR10(data.Dataset):
 
     def __init__(self, root, train=True,
                  transform=None, target_transform=None,
-                 download=True):
+                 download=False):
         self.root = os.path.expanduser(root)
         self.transform = transform
         self.target_transform = target_transform
@@ -114,30 +114,30 @@ class CIFAR10(data.Dataset):
         if download:
             self.download()
 
-        if not self._check_integrity():
-            raise RuntimeError('Dataset not found or corrupted.' +
-                               ' You can use download=True to download it')
+        # if not self._check_integrity():
+        #     raise RuntimeError('Dataset not found or corrupted.' +
+        #                        ' You can use download=True to download it')
 
         # now load the picked numpy arrays
         if self.train:
-            self.train_data = []
-            self.train_labels = []
-            for fentry in self.train_list:
-                f = fentry[0]
-                file = os.path.join(self.root, self.base_folder, f)
-                fo = open(file, 'rb')
-                if sys.version_info[0] == 2:
-                    entry = pickle.load(fo)
-                else:
-                    entry = pickle.load(fo, encoding='latin1')
-                self.train_data.append(entry['data'])
-                if 'labels' in entry:
-                    self.train_labels += entry['labels']
-                else:
-                    self.train_labels += entry['fine_labels']
-                fo.close()
-
-            self.train_data = np.concatenate(self.train_data)
+            # self.train_data = []
+            # self.train_labels = []
+            # for fentry in self.train_list:
+            #     f = fentry[0]
+            #     file = os.path.join(self.root, self.base_folder, f)
+            #     fo = open(file, 'rb')
+            #     if sys.version_info[0] == 2:
+            #         entry = pickle.load(fo)
+            #     else:
+            #         entry = pickle.load(fo, encoding='latin1')
+            #     self.train_data.append(entry['data'])
+            #     if 'labels' in entry:
+            #         self.train_labels += entry['labels']
+            #     else:
+            #         self.train_labels += entry['fine_labels']
+            #     fo.close()
+            #
+            # self.train_data = np.concatenate(self.train_data)
 
             # self.train_data = np.load(f'../data/{config_dict["dataset"]}_{config_dict["data_type"]}/X_train_{config_dict["dataset"]}.npy')
             self.train_data = np.load(f'{FILE_PATH}/../data/{config_dict()["dataset"]}/X_train.npy')
@@ -147,19 +147,19 @@ class CIFAR10(data.Dataset):
             self.train_labels = np.load(f'{FILE_PATH}/../data/{config_dict()["dataset"]}/y_train.npy')
 
         else:
-            f = self.test_list[0][0]
-            file = os.path.join(self.root, self.base_folder, f)
-            fo = open(file, 'rb')
-            if sys.version_info[0] == 2:
-                entry = pickle.load(fo)
-            else:
-                entry = pickle.load(fo, encoding='latin1')
-            self.test_data = entry['data']
-            if 'labels' in entry:
-                self.test_labels = entry['labels']
-            else:
-                self.test_labels = entry['fine_labels']
-            fo.close()
+            # f = self.test_list[0][0]
+            # file = os.path.join(self.root, self.base_folder, f)
+            # fo = open(file, 'rb')
+            # if sys.version_info[0] == 2:
+            #     entry = pickle.load(fo)
+            # else:
+            #     entry = pickle.load(fo, encoding='latin1')
+            # self.test_data = entry['data']
+            # if 'labels' in entry:
+            #     self.test_labels = entry['labels']
+            # else:
+            #     self.test_labels = entry['fine_labels']
+            # fo.close()
 
             # self.test_data = np.load(f'../data/{config_dict["dataset"]}_{config_dict["data_type"]}/X_test_{config_dict["dataset"]}.npy')
             self.test_data = np.load(f'{FILE_PATH}/../data/{config_dict()["dataset"]}/X_test.npy')
