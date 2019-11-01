@@ -4,7 +4,9 @@ import numpy as np
 from collections import namedtuple
 
 import torch
-from models.micro_models import NetworkCIFAR as Network
+from torch.nn import Sequential, Conv2d
+
+from models.micro_models import NetworkCIFAR as Network, Cell
 
 Genotype = namedtuple('Genotype', 'normal normal_concat reduce reduce_concat')
 Genotype_norm = namedtuple('Genotype', 'normal normal_concat')
@@ -22,6 +24,14 @@ PRIMITIVES = [
     'sep_conv_7x7',
     'conv_7x1_1x7',
 ]
+
+
+def make_micro_creator(genome):
+    decoded_genome = decode(convert(genome))
+    def cell_1on1(channel_num, _):
+        cell = Cell(decoded_genome, channel_num, channel_num, channel_num, False, False)
+        return Sequential(cell, Conv2d(channel_num * cell.multiplier, channel_num, kernel_size=1))
+    return cell_1on1
 
 
 def convert_cell(cell_bit_string):

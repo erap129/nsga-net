@@ -306,4 +306,3 @@ if __name__ == "__main__":
     # start = time.time()
     # print(main(genome=DARTS_V2, epochs=20, save='DARTS_V2_32', seed=1, init_channels=32))
     # print('Time elapsed = {} mins'.format((time.time() - start) / 60))
-

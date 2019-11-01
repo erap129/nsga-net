@@ -105,7 +105,7 @@ class CIFAR10(data.Dataset):
 
     def __init__(self, root, train=True,
                  transform=None, target_transform=None,
-                 download=False):
+                 download=True):
         self.root = os.path.expanduser(root)
         self.transform = transform
         self.target_transform = target_transform

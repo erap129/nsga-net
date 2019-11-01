@@ -4,6 +4,9 @@ import sys
 import traceback
 from collections import defaultdict
 
+from models.macro_decoder import ResidualNode
+from search.micro_encoding import make_micro_creator
+
 sys.path.insert(0, '/home/eladr/nsga-net_remote')
 
 import os
@@ -42,6 +45,8 @@ parser.add_argument('--n_offspring', type=int, default=40, help='number of offsp
 parser.add_argument('--init_channels', type=int, default=24, help='# of filters for first cell')
 parser.add_argument('--layers', type=int, default=11, help='equivalent with N = 3')
 parser.add_argument('--epochs', type=int, default=25, help='# of epochs to train during architecture search')
+parser.add_argument('--datasets', type=str, default='Cricket', help='datasets to run on')
+parser.add_argument("-dm", "--debug_mode", action='store_true', help="debug mode, don't save results to disk")
 
 log_format = '%(asctime)s %(message)s'
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
@@ -141,53 +146,58 @@ def do_every_generations(algorithm):
 
 @ex.main
 def main():
-    args = parser.parse_args(config_dict()['arg_string'].split())
-    args.search_space = sys.argv[1]
-    args.save = 'search-{}-{}-{}'.format(args.save, args.search_space, time.strftime("%Y%m%d-%H%M%S"))
-    utils.create_exp_dir(args.save)
-    fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
-    fh.setFormatter(logging.Formatter(log_format))
-    logging.getLogger().addHandler(fh)
+    for exp_type in config_dict()['exp_order']:
+        args.save = 'search-{}-{}-{}'.format(args.save, exp_type, time.strftime("%Y%m%d-%H%M%S"))
+        utils.create_exp_dir(args.save)
+        fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
+        fh.setFormatter(logging.Formatter(log_format))
+        logging.getLogger().addHandler(fh)
 
-    np.random.seed(args.seed)
-    logging.info("args = %s", args)
+        np.random.seed(args.seed)
+        logging.info("args = %s", args)
 
-    # setup NAS search problem
-    if args.search_space == 'micro':  # NASNet search space
-        n_var = int(4 * args.n_blocks * 2)
-        lb = np.zeros(n_var)
-        ub = np.ones(n_var)
-        h = 1
-        for b in range(0, n_var//2, 4):
-            ub[b] = args.n_ops - 1
-            ub[b + 1] = h
-            ub[b + 2] = args.n_ops - 1
-            ub[b + 3] = h
-            h += 1
-        ub[n_var//2:] = ub[:n_var//2]
-    elif args.search_space == 'macro':  # modified GeneticCNN search space
-        n_var = int(((args.n_nodes-1)*args.n_nodes/2 + 1)*3)
-        lb = np.zeros(n_var)
-        ub = np.ones(n_var)
-    else:
-        raise NameError('Unknown search space type')
+        # setup NAS search problem
+        if exp_type == 'micro':  # NASNet search space
+            n_var = int(4 * args.n_blocks * 2)
+            lb = np.zeros(n_var)
+            ub = np.ones(n_var)
+            h = 1
+            for b in range(0, n_var//2, 4):
+                ub[b] = args.n_ops - 1
+                ub[b + 1] = h
+                ub[b + 2] = args.n_ops - 1
+                ub[b + 3] = h
+                h += 1
+            ub[n_var//2:] = ub[:n_var//2]
+        elif exp_type == 'macro':  # modified GeneticCNN search space
+            n_var = int(((args.n_nodes-1)*args.n_nodes/2 + 1)*3)
+            lb = np.zeros(n_var)
+            ub = np.ones(n_var)
+        else:
+            raise NameError('Unknown search space type')
 
-    problem = NAS(n_var=n_var, search_space=args.search_space,
-                  n_obj=2, n_constr=0, lb=lb, ub=ub,
-                  init_channels=args.init_channels, layers=args.layers,
-                  epochs=args.epochs, save_dir=args.save)
+        problem = NAS(n_var=n_var, search_space=exp_type,
+                      n_obj=2, n_constr=0, lb=lb, ub=ub,
+                      init_channels=args.init_channels, layers=args.layers,
+                      epochs=args.epochs, save_dir=args.save)
 
-    # configure the nsga-net method
-    method = engine.nsganet(pop_size=args.pop_size,
-                            n_offsprings=args.n_offspring,
-                            eliminate_duplicates=True)
+        # configure the nsga-net method
+        method = engine.nsganet(pop_size=args.pop_size,
+                                n_offsprings=args.n_offspring,
+                                eliminate_duplicates=True)
 
-    res = minimize(problem,
-                   method,
-                   callback=do_every_generations,
-                   termination=('n_gen', args.n_gens))
+        res = minimize(problem,
+                       method,
+                       callback=do_every_generations,
+                       termination=('n_gen', args.n_gens))
 
-    return (100 - np.min(res.pop.get('F')[:, 0])) / 100
+        val_accs = res.pop.get('F')[:, 0]
+        if exp_type == 'micro':
+            best_idx = np.where(val_accs == np.min(val_accs))[0][0]
+            best_genome = res.pop[best_idx].X
+            set_config('micro_creator', make_micro_creator(best_genome))
+
+    return (100 - np.min(val_accs)) / 100
 
 
 def add_exp(all_exps, run, dataset, iteration):
@@ -204,10 +214,11 @@ def add_exp(all_exps, run, dataset, iteration):
 if __name__ == '__main__':
     first = True
     all_exps = defaultdict(list)
-    if 'debug' not in sys.argv:
+    args = parser.parse_args()
+    if not args.debug_mode:
         ex.observers.append(MongoObserver.create(url=f'mongodb://{SERVER_IP}/EEGNAS', db_name='EEGNAS'))
-    for iteration in range(1, ITERATIONS+2):
-        for dataset in sys.argv[2].split(','):
+    for iteration in range(1, ITERATIONS+1):
+        for dataset in args.datasets.split(','):
             try:
                 x_train = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/X_train.npy')
                 x_test = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/X_test.npy')
@@ -221,6 +232,7 @@ if __name__ == '__main__':
                 set_config('INPUT_HEIGHT', x_train.shape[2])
                 set_config('n_channels', x_train.shape[1])
                 set_config('n_classes', len(np.unique(y_train)))
+                set_config('micro_creator', ResidualNode)
                 ex.add_config({'DEFAULT':{'dataset': dataset}})
                 run = ex.run(options={'--name': f'NSGA_{dataset}_{sys.argv[1]}'})
                 add_exp(all_exps, run, dataset, iteration)

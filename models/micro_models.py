@@ -7,7 +7,6 @@ from models import micro_genotypes
 from models.micro_operations import *
 from misc.utils import drop_path
 
-
 DEFAULT_PADDINGS = {
     'none': 1,
     'skip_connect': 1,
@@ -20,13 +19,6 @@ DEFAULT_PADDINGS = {
     'dil_conv_5x5': 4,
     'conv_7x1_1x7': 3,
 }
-
-INPUT_CHANNELS = 22
-
-
-def cell_1on1(channel_num, _):
-    cell = Cell(micro_genotypes.FaceDetection, channel_num, channel_num, channel_num, False, False)
-    return Sequential(cell, Conv2d(channel_num * cell.multiplier, channel_num, kernel_size=1))
 
 
 class Cell(nn.Module):

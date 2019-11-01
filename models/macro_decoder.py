@@ -7,8 +7,6 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 
 from config import config_dict
-from models import micro_genotypes
-from models.micro_models import Cell, cell_1on1
 
 KERNEL_SIZE_3 = (3,1)
 KERNEL_SIZE_2 = (2,1)
@@ -642,11 +640,11 @@ class ResidualPhase(nn.Module):
         if preact:
             node_constructor = PreactResidualNode
 
-        elif config_dict()['custom_cell_for_macro']:
-            node_constructor = cell_1on1
+        # elif config_dict()['custom_cell_for_macro']:
+        #     node_constructor = cell_1on1
 
         else:
-            node_constructor = ResidualNode
+            node_constructor = config_dict()['micro_creator']
 
         nodes = []
         for i in range(len(gene)):
