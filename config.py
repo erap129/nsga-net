@@ -1,10 +1,9 @@
 config = {
-        'INPUT_HEIGHT': 1125,
-        'INPUT_WIDTH': 1,
-        'dataset': 'BCI_IV_2a',
         'data_type': 'normal',
-        'nsga_strategy': 'macro',
-        'exp_order': ['micro', 'macro']
+        'exp_order': ['micro'],
+        'nsga_strategy': 'micro',
+        'INPUT_WIDTH': 1,
+        'problem': 'regression'
         }
 
 

@@ -88,8 +88,12 @@ def main(genome, epochs, search_space='micro',
 
     logging.info("param size = %fMB", n_params)
 
-    criterion = nn.CrossEntropyLoss()
+    if config_dict()['problem'] == 'classification':
+        criterion = nn.CrossEntropyLoss()
+    else:
+        criterion = nn.MSELoss()
     criterion = criterion.cuda()
+
 
     parameters = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = torch.optim.SGD(
@@ -221,6 +225,8 @@ def train(train_queue, net, criterion, optimizer, params):
         inputs, targets = inputs.to(device), targets.to(device)
         optimizer.zero_grad()
         outputs, outputs_aux = net(inputs)
+        if config_dict()['problem'] == 'regression':
+            targets = targets.float()
         loss = criterion(outputs, targets)
 
         if params['auxiliary']:
@@ -231,17 +237,19 @@ def train(train_queue, net, criterion, optimizer, params):
         nn.utils.clip_grad_norm_(net.parameters(), params['grad_clip'])
         optimizer.step()
 
-        train_loss += loss.item()
-        _, predicted = outputs.max(1)
-        total += targets.size(0)
-        correct += predicted.eq(targets).sum().item()
+        if config_dict()['problem'] == 'classification':
+            train_loss += loss.item()
+            _, predicted = outputs.max(1)
+            total += targets.size(0)
+            correct += predicted.eq(targets).sum().item()
+        else:
+            train_loss -= loss.item()
+            total += targets.size(0)
 
-    #     if step % args.report_freq == 0:
-    #         logging.info('train %03d %e %f', step, train_loss/total, 100.*correct/total)
-    #
-    # logging.info('train acc %f', 100. * correct / total)
-
-    return 100.*correct/total, train_loss/total
+    if config_dict()['problem'] == 'classification':
+        return 100.*correct/total, train_loss/total
+    else:
+        return train_loss / total, train_loss / total
 
 
 # def infer(valid_queue, model, criterion):
@@ -280,20 +288,27 @@ def infer(valid_queue, net, criterion):
         for step, (inputs, targets) in enumerate(valid_queue):
             inputs, targets = inputs.to(device), targets.to(device)
             outputs, _ = net(inputs)
+            if config_dict()['problem'] == 'regression':
+                targets = targets.float()
             loss = criterion(outputs, targets)
 
-            test_loss += loss.item()
-            _, predicted = outputs.max(1)
-            total += targets.size(0)
-            correct += predicted.eq(targets).sum().item()
+            if config_dict()['problem'] == 'classification':
+                test_loss += loss.item()
+                _, predicted = outputs.max(1)
+                total += targets.size(0)
+                correct += predicted.eq(targets).sum().item()
+            else:
+                test_loss -= loss.item()
+                total += targets.size(0)
 
             # if step % args.report_freq == 0:
             #     logging.info('valid %03d %e %f', step, test_loss/total, 100.*correct/total)
+    if config_dict()['problem'] == 'classification':
+        acc = 100. * correct / total
+        return acc, test_loss / total
+    else:
+        return test_loss / total, test_loss / total
 
-    acc = 100.*correct/total
-    # logging.info('valid acc %f', 100. * correct / total)
-
-    return acc, test_loss/total
 
 
 if __name__ == "__main__":

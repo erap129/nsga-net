@@ -1,4 +1,5 @@
 import pdb
+import pickle
 import sys
 # update your projecty root path before running
 import traceback
@@ -54,7 +55,7 @@ ITERATIONS = 1
 SERVER_IP = '132.72.80.67'
 
 pop_hist = []  # keep track of every evaluated architecture
-ex = Experiment(f'NSGA-net_{config_dict()["nsga_strategy"]}_{config_dict()["dataset"]}_{config_dict()["data_type"]}')
+ex = Experiment()
 ex.add_config(config_dict())
 
 
@@ -145,7 +146,7 @@ def do_every_generations(algorithm):
 @ex.main
 def main():
     for exp_type in config_dict()['exp_order']:
-        save_dir = 'search/search-{}-{}-{}'.format(args.save, exp_type, time.strftime("%Y%m%d-%H%M%S"))
+        save_dir = f'{os.path.dirname(os.path.abspath(__file__))}/search-{args.save}-{exp_type}-{time.strftime("%Y%m%d-%H%M%S")}'
         utils.create_exp_dir(save_dir)
         fh = logging.FileHandler(os.path.join(save_dir, 'log.txt'))
         fh.setFormatter(logging.Formatter(log_format))
@@ -193,6 +194,8 @@ def main():
         if exp_type == 'micro':
             best_idx = np.where(val_accs == np.min(val_accs))[0][0]
             best_genome = res.pop[best_idx].X
+            with open(f'{save_dir}/best_genome.pkl', 'wb') as pkl_file:
+                pickle.dump(best_genome, pkl_file)
             set_config('micro_creator', make_micro_creator(best_genome))
 
     return (100 - np.min(val_accs)) / 100
@@ -229,7 +232,7 @@ if __name__ == '__main__':
                 set_config('y_test', y_test)
                 set_config('INPUT_HEIGHT', x_train.shape[2])
                 set_config('n_channels', x_train.shape[1])
-                set_config('n_classes', len(np.unique(y_train)))
+                set_config('n_classes', y_train.shape[1])
                 set_config('micro_creator', ResidualNode)
                 ex.add_config({'DEFAULT':{'dataset': dataset}})
                 run = ex.run(options={'--name': f'NSGA_{dataset}_{args.search_space}'})
