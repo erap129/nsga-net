@@ -145,9 +145,9 @@ def do_every_generations(algorithm):
 @ex.main
 def main():
     for exp_type in config_dict()['exp_order']:
-        args.save = 'search-{}-{}-{}'.format(args.save, exp_type, time.strftime("%Y%m%d-%H%M%S"))
-        utils.create_exp_dir(args.save)
-        fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
+        save_dir = 'search/search-{}-{}-{}'.format(args.save, exp_type, time.strftime("%Y%m%d-%H%M%S"))
+        utils.create_exp_dir(save_dir)
+        fh = logging.FileHandler(os.path.join(save_dir, 'log.txt'))
         fh.setFormatter(logging.Formatter(log_format))
         logging.getLogger().addHandler(fh)
 
@@ -177,7 +177,7 @@ def main():
         problem = NAS(n_var=n_var, search_space=exp_type,
                       n_obj=2, n_constr=0, lb=lb, ub=ub,
                       init_channels=args.init_channels, layers=args.layers,
-                      epochs=args.epochs, save_dir=args.save)
+                      epochs=args.epochs, save_dir=save_dir)
 
         # configure the nsga-net method
         method = engine.nsganet(pop_size=args.pop_size,
@@ -232,7 +232,7 @@ if __name__ == '__main__':
                 set_config('n_classes', len(np.unique(y_train)))
                 set_config('micro_creator', ResidualNode)
                 ex.add_config({'DEFAULT':{'dataset': dataset}})
-                run = ex.run(options={'--name': f'NSGA_{dataset}_{sys.argv[1]}'})
+                run = ex.run(options={'--name': f'NSGA_{dataset}_{args.search_space}'})
                 add_exp(all_exps, run, dataset, iteration)
                 if first:
                     first_run_id = run._id
