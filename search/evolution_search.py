@@ -198,8 +198,8 @@ def main():
     return (100 - np.min(val_accs)) / 100
 
 
-def add_exp(all_exps, run, dataset, iteration):
-    all_exps['algorithm'].append(f'NSGA_{sys.argv[1]}')
+def add_exp(all_exps, run, dataset, iteration, search_space):
+    all_exps['algorithm'].append(f'NSGA_{search_space}')
     all_exps['architecture'].append('best')
     all_exps['measure'].append('accuracy')
     all_exps['dataset'].append(dataset)
@@ -233,7 +233,7 @@ if __name__ == '__main__':
                 set_config('micro_creator', ResidualNode)
                 ex.add_config({'DEFAULT':{'dataset': dataset}})
                 run = ex.run(options={'--name': f'NSGA_{dataset}_{args.search_space}'})
-                add_exp(all_exps, run, dataset, iteration)
+                add_exp(all_exps, run, dataset, iteration, args.search_space)
                 if first:
                     first_run_id = run._id
                     first = False
