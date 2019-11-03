@@ -232,7 +232,10 @@ if __name__ == '__main__':
                 set_config('y_test', y_test)
                 set_config('INPUT_HEIGHT', x_train.shape[2])
                 set_config('n_channels', x_train.shape[1])
-                set_config('n_classes', y_train.shape[1])
+                if y_train.ndim > 1:
+                    set_config('n_classes', y_train.shape[1])
+                else:
+                    set_config('n_classes', len(np.unique(y_train)))
                 set_config('micro_creator', ResidualNode)
                 ex.add_config({'DEFAULT':{'dataset': dataset}})
                 run = ex.run(options={'--name': f'NSGA_{dataset}_{args.search_space}'})
