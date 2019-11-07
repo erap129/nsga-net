@@ -4,8 +4,12 @@ import sys
 # update your projecty root path before running
 import traceback
 from collections import defaultdict
+import os
 
-sys.path.insert(0, '/home/eladr/nsga-net_remote')
+dir_path = os.path.dirname(os.path.realpath(__file__))
+
+sys.path.insert(0, f'{dir_path}/..')
+sys.path.insert(0, dir_path)
 from models.macro_decoder import ResidualNode
 from search.micro_encoding import make_micro_creator
 import os
