@@ -139,7 +139,7 @@ class AuxiliaryHeadImageNet(nn.Module):
 
 class NetworkCIFAR(nn.Module):
 
-    def __init__(self, C, num_classes, layers, auxiliary, genotype, SE=False):
+    def __init__(self, C, num_classes, n_channels, layers, auxiliary, genotype, SE=False):
         super(NetworkCIFAR, self).__init__()
         self._layers = layers
         self._auxiliary = auxiliary
@@ -147,7 +147,7 @@ class NetworkCIFAR(nn.Module):
         stem_multiplier = 3
         C_curr = stem_multiplier * C
         self.stem = nn.Sequential(
-            nn.Conv2d(config_dict()['n_channels'], C_curr, (3, 1), padding=(1, 0), bias=False),
+            nn.Conv2d(n_channels, C_curr, (3, 1), padding=(1, 0), bias=False),
             nn.BatchNorm2d(C_curr)
         )
 

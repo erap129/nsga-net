@@ -63,7 +63,7 @@ def main(genome, epochs, search_space='micro',
 
     if search_space == 'micro':
         genotype = micro_encoding.decode(genome)
-        model = Network(init_channels, CIFAR_CLASSES, layers, auxiliary, genotype)
+        model = Network(init_channels, CIFAR_CLASSES, config_dict()['n_channels'], layers, auxiliary, genotype)
     elif search_space == 'macro':
         genotype = macro_encoding.decode(genome)
         channels = [(INPUT_CHANNELS, init_channels),
@@ -147,10 +147,10 @@ def main(genome, epochs, search_space='micro',
         model.droprate = drop_path_prob * epoch / epochs
 
         train_acc, train_obj = train(train_queue, model, criterion, optimizer, train_params)
-        logging.info('train_acc %f', train_acc)
+        logging.info(f'train_{config_dict()["performance_measure"]} %f', train_acc)
 
     valid_acc, valid_obj = infer(valid_queue, model, criterion)
-    logging.info('valid_acc %f', valid_acc)
+    logging.info(f'valid_{config_dict()["performance_measure"]} %f', valid_acc)
 
     # calculate for flops
     model = add_flops_counting_methods(model)

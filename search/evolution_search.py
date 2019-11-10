@@ -49,13 +49,13 @@ parser.add_argument('--init_channels', type=int, default=24, help='# of filters 
 parser.add_argument('--layers', type=int, default=11, help='equivalent with N = 3')
 parser.add_argument('--epochs', type=int, default=25, help='# of epochs to train during architecture search')
 parser.add_argument('--datasets', type=str, default='Cricket', help='datasets to run on')
+parser.add_argument('--iterations', type=int, default=3, help='times to run each experiment')
 parser.add_argument("-dm", "--debug_mode", action='store_true', help="debug mode, don't save results to disk")
 
 log_format = '%(asctime)s %(message)s'
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format=log_format, datefmt='%m/%d %I:%M:%S %p')
 
-ITERATIONS = 1
 SERVER_IP = '132.72.80.67'
 
 pop_hist = []  # keep track of every evaluated architecture
@@ -104,6 +104,8 @@ class NAS(Problem):
                 genome = micro_encoding.convert(x[i, :])
             elif self._search_space == 'macro':
                 genome = macro_encoding.convert(x[i, :])
+            elif self._search_space == 'micromacro':
+                print
             performance = train_search.main(genome=genome,
                                             search_space=self._search_space,
                                             init_channels=self._init_channels,
@@ -116,7 +118,7 @@ class NAS(Problem):
             objs[i, 0] = 100 - performance['valid_acc']
             print(f'valid acc - {performance["valid_acc"]}')
             objs[i, 1] = performance['flops']
-            ex.log_scalar("arch_valid_acc", performance['valid_acc'], arch_id)
+            ex.log_scalar(f"arch_valid_{config_dict()['performance_measure']}", performance['valid_acc'], arch_id)
             ex.log_scalar("arch_flops", performance['flops'], arch_id)
             self._n_evaluated += 1
 
@@ -147,6 +149,28 @@ def do_every_generations(algorithm):
     ex.log_scalar("best_complexity", np.min(pop_obj[:, 1]), gen)
 
 
+def set_micro_exp(args):
+    n_var = int(4 * args.n_blocks * 2)
+    lb = np.zeros(n_var)
+    ub = np.ones(n_var)
+    h = 1
+    for b in range(0, n_var // 2, 4):
+        ub[b] = args.n_ops - 1
+        ub[b + 1] = h
+        ub[b + 2] = args.n_ops - 1
+        ub[b + 3] = h
+        h += 1
+    ub[n_var // 2:] = ub[:n_var // 2]
+    return n_var, lb, ub
+
+
+def set_macro_exp(args):
+    n_var = int(((args.n_nodes - 1) * args.n_nodes / 2 + 1) * 3)
+    lb = np.zeros(n_var)
+    ub = np.ones(n_var)
+    return n_var, lb, ub
+
+
 @ex.main
 def main():
     for exp_type in config_dict()['exp_order']:
@@ -161,21 +185,15 @@ def main():
 
         # setup NAS search problem
         if exp_type == 'micro':  # NASNet search space
-            n_var = int(4 * args.n_blocks * 2)
-            lb = np.zeros(n_var)
-            ub = np.ones(n_var)
-            h = 1
-            for b in range(0, n_var//2, 4):
-                ub[b] = args.n_ops - 1
-                ub[b + 1] = h
-                ub[b + 2] = args.n_ops - 1
-                ub[b + 3] = h
-                h += 1
-            ub[n_var//2:] = ub[:n_var//2]
+            n_var, lb, ub = set_micro_exp(args)
         elif exp_type == 'macro':  # modified GeneticCNN search space
-            n_var = int(((args.n_nodes-1)*args.n_nodes/2 + 1)*3)
-            lb = np.zeros(n_var)
-            ub = np.ones(n_var)
+            n_var, lb, ub = set_macro_exp(args)
+        elif exp_type == 'micromacro':  # modified GeneticCNN search space
+            n_var_mac, lb_mac, ub_mac = set_macro_exp(args)
+            n_var_mic, lb_mic, ub_mic = set_micro_exp(args)
+            n_var = n_var_mic + n_var_mac
+            lb = [*lb_mac, *lb_mic]
+            ub = [*ub_mac, *ub_mic]
         else:
             raise NameError('Unknown search space type')
 
@@ -222,13 +240,19 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if not args.debug_mode:
         ex.observers.append(MongoObserver.create(url=f'mongodb://{SERVER_IP}/EEGNAS', db_name='EEGNAS'))
-    for iteration in range(1, ITERATIONS+1):
+    for iteration in range(1, args.iterations+1):
         for dataset in args.datasets.split(','):
             try:
                 x_train = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/X_train.npy')
                 x_test = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/X_test.npy')
                 y_train = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/y_train.npy')
                 y_test = np.load(f'{os.path.dirname(os.path.abspath(__file__))}/../data/{dataset}/y_test.npy')
+                if 'netflow' in dataset:
+                    set_config('problem', 'regression')
+                    set_config('performance_measure', 'minus_mse')
+                else:
+                    set_config('problem', 'classification')
+                    set_config('performance_measure', 'acc')
                 set_config('dataset', dataset)
                 set_config('x_train', x_train)
                 set_config('x_test', x_test)
@@ -236,6 +260,8 @@ if __name__ == '__main__':
                 set_config('y_test', y_test)
                 set_config('INPUT_HEIGHT', x_train.shape[2])
                 set_config('n_channels', x_train.shape[1])
+                if 'exp_order' not in config_dict():
+                    set_config('exp_order', config_dict()['nsga_strategy'])
                 if y_train.ndim > 1:
                     set_config('n_classes', y_train.shape[1])
                 else:

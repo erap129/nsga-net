@@ -1,9 +1,9 @@
 config = {
         'data_type': 'normal',
-        'exp_order': ['micro'],
         'nsga_strategy': 'micro',
         'INPUT_WIDTH': 1,
-        'problem': 'regression'
+        'problem': 'classification',
+        'performance_measure': 'acc'
         }
 
 
