@@ -1,5 +1,7 @@
 import sys
 # update your projecty root path before running
+from search.micro_encoding import make_micro_creator
+
 sys.path.insert(0, '/path/to/nsga-net')
 
 import os
@@ -23,12 +25,12 @@ from misc import utils
 from search import micro_encoding
 from search import macro_encoding
 from misc.flops_counter import add_flops_counting_methods
-from config import config_dict
+from config import config_dict, set_config
 
 device = 'cuda'
 
 
-def main(genome, epochs, search_space='micro',
+def main(macro_genome, micro_genome, epochs, search_space='micro',
          save='Design_1', expr_root='search', seed=0, gpu=0, init_channels=24,
          layers=11, auxiliary=False, cutout=False, drop_path_prob=0.0):
 
@@ -38,9 +40,6 @@ def main(genome, epochs, search_space='micro',
     log_format = '%(asctime)s %(message)s'
     logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                         format=log_format, datefmt='%m/%d %I:%M:%S %p')
-    # fh = logging.FileHandler(os.path.join(save_pth, 'log.txt'))
-    # fh.setFormatter(logging.Formatter(log_format))
-    # logging.getLogger().addHandler(fh)
 
     # ---- parameter values setting ----- #
     CIFAR_CLASSES = config_dict()['n_classes']
@@ -62,15 +61,28 @@ def main(genome, epochs, search_space='micro',
     }
 
     if search_space == 'micro':
+        genome = micro_genome
         genotype = micro_encoding.decode(genome)
         model = Network(init_channels, CIFAR_CLASSES, config_dict()['n_channels'], layers, auxiliary, genotype)
     elif search_space == 'macro':
+        genome = macro_genome
         genotype = macro_encoding.decode(genome)
         channels = [(INPUT_CHANNELS, init_channels),
                     (init_channels, 2*init_channels),
                     (2*init_channels, 4*init_channels)]
         model = EvoNetwork(genotype, channels, CIFAR_CLASSES, (config_dict()['INPUT_HEIGHT'], config_dict()['INPUT_WIDTH']), decoder='residual')
-        print
+    elif search_space == 'micromacro':
+        genome = [macro_genome, micro_genome]
+        macro_genotype = macro_encoding.decode(macro_genome)
+        micro_genotype = micro_encoding.decode(micro_genome)
+        genotype = [macro_genotype, micro_genotype]
+        set_config('micro_creator', make_micro_creator(micro_genotype, convert=False))
+        channels = [(INPUT_CHANNELS, init_channels),
+                    (init_channels, 2 * init_channels),
+                    (2 * init_channels, 4 * init_channels)]
+        model = EvoNetwork(macro_genotype, channels, CIFAR_CLASSES,
+                           (config_dict()['INPUT_HEIGHT'], config_dict()['INPUT_WIDTH']), decoder='residual')
+
     else:
         raise NameError('Unknown search space type')
 
@@ -125,10 +137,6 @@ def main(genome, epochs, search_space='micro',
     train_data = my_cifar10.CIFAR10(root=data_root, train=True, download=False, transform=train_transform)
     valid_data = my_cifar10.CIFAR10(root=data_root, train=False, download=False, transform=valid_transform)
 
-    # num_train = len(train_data)
-    # indices = list(range(num_train))
-    # split = int(np.floor(train_portion * num_train))
-
     train_queue = torch.utils.data.DataLoader(
         train_data, batch_size=batch_size,
         # sampler=torch.utils.data.sampler.SubsetRandomSampler(indices[:split]),
@@ -179,41 +187,6 @@ def main(genome, epochs, search_space='micro',
     }
 
 
-# def train(train_queue, model, criterion, optimizer, params):
-#     objs = utils.AvgrageMeter()
-#     top1 = utils.AvgrageMeter()
-#     top5 = utils.AvgrageMeter()
-#     model.train()
-#
-#     for step, (input, target) in enumerate(train_queue):
-#         input = Variable(input).cuda()
-#         target = Variable(target).cuda(async=True)
-#
-#         optimizer.zero_grad()
-#         if params['auxiliary']:
-#             logits, logits_aux = model(input)
-#         else:
-#             logits, _ = model(input)
-#
-#         loss = criterion(logits, target)
-#         if params['auxiliary']:
-#             loss_aux = criterion(logits_aux, target)
-#             loss += params['auxiliary_weight'] * loss_aux
-#         loss.backward()
-#         nn.utils.clip_grad_norm(model.parameters(), params['grad_clip'])
-#         optimizer.step()
-#
-#         prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
-#         n = input.size(0)
-#         objs.update(loss.data[0], n)
-#         top1.update(prec1.data[0], n)
-#         top5.update(prec5.data[0], n)
-#
-#         # if step % params['report_freq'] == 0:
-#         #     logging.info('train %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
-#
-#     return top1.avg, objs.avg
-
 # Training
 def train(train_queue, net, criterion, optimizer, params):
     net.train()
@@ -250,32 +223,6 @@ def train(train_queue, net, criterion, optimizer, params):
         return 100.*correct/total, train_loss/total
     else:
         return train_loss / total, train_loss / total
-
-
-# def infer(valid_queue, model, criterion):
-#     objs = utils.AvgrageMeter()
-#     top1 = utils.AvgrageMeter()
-#     top5 = utils.AvgrageMeter()
-#     model.eval()
-#
-#     for step, (input, target) in enumerate(valid_queue):
-#         input = Variable(input, volatile=True).cuda()
-#         target = Variable(target, volatile=True).cuda(async=True)
-#
-#         logits, _ = model(input)
-#
-#         loss = criterion(logits, target)
-#
-#         prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
-#         n = input.size(0)
-#         objs.update(loss.data[0], n)
-#         top1.update(prec1.data[0], n)
-#         top5.update(prec5.data[0], n)
-#
-#         # if step % params['report_freq'] == 0:
-#         #     logging.info('valid %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
-#
-#     return top1.avg, objs.avg
 
 
 def infer(valid_queue, net, criterion):

@@ -13,7 +13,7 @@ sys.path.insert(0, dir_path)
 from models.macro_decoder import ResidualNode
 from search.micro_encoding import make_micro_creator
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 import time
 import logging
 import argparse
@@ -101,12 +101,19 @@ class NAS(Problem):
 
             # call back-propagation training
             if self._search_space == 'micro':
-                genome = micro_encoding.convert(x[i, :])
+                micro_genome = micro_encoding.convert(x[i, :])
+                macro_genome = None
+
             elif self._search_space == 'macro':
-                genome = macro_encoding.convert(x[i, :])
+                macro_genome = macro_encoding.convert(x[i, :])
+                micro_genome = None
+
             elif self._search_space == 'micromacro':
-                print
-            performance = train_search.main(genome=genome,
+                macro_genome = macro_encoding.convert(x[i, :21])
+                micro_genome = micro_encoding.convert(x[i, 21:])
+
+            performance = train_search.main(macro_genome=macro_genome,
+                                            micro_genome=micro_genome,
                                             search_space=self._search_space,
                                             init_channels=self._init_channels,
                                             layers=self._layers, cutout=False,
@@ -192,8 +199,8 @@ def main():
             n_var_mac, lb_mac, ub_mac = set_macro_exp(args)
             n_var_mic, lb_mic, ub_mic = set_micro_exp(args)
             n_var = n_var_mic + n_var_mac
-            lb = [*lb_mac, *lb_mic]
-            ub = [*ub_mac, *ub_mic]
+            lb = np.array([*lb_mac, *lb_mic])
+            ub = np.array([*ub_mac, *ub_mic])
         else:
             raise NameError('Unknown search space type')
 

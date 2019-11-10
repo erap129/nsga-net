@@ -26,8 +26,11 @@ PRIMITIVES = [
 ]
 
 
-def make_micro_creator(genome):
-    decoded_genome = decode(convert(genome))
+def make_micro_creator(genome, convert=True):
+    if convert:
+        decoded_genome = decode(convert(genome))
+    else:
+        decoded_genome = genome
     def cell_1on1(channel_num, _):
         cell = Cell(decoded_genome, channel_num, channel_num, channel_num, False, False)
         return Sequential(cell, Conv2d(channel_num * cell.multiplier, channel_num, kernel_size=1))
