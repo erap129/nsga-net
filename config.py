@@ -1,6 +1,5 @@
 config = {
         'data_type': 'normal',
-        'nsga_strategy': 'micro',
         'INPUT_WIDTH': 1,
         'problem': 'classification',
         'performance_measure': 'acc'

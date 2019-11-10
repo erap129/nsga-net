@@ -261,7 +261,7 @@ if __name__ == '__main__':
                 set_config('INPUT_HEIGHT', x_train.shape[2])
                 set_config('n_channels', x_train.shape[1])
                 if 'exp_order' not in config_dict():
-                    set_config('exp_order', config_dict()['nsga_strategy'])
+                    set_config('exp_order', [args.search_space])
                 if y_train.ndim > 1:
                     set_config('n_classes', y_train.shape[1])
                 else:
