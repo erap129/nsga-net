@@ -13,7 +13,7 @@ sys.path.insert(0, dir_path)
 from models.macro_decoder import ResidualNode
 from search.micro_encoding import make_micro_creator
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 import time
 import logging
 import argparse
