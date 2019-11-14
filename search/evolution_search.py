@@ -5,6 +5,11 @@ import sys
 import traceback
 from collections import defaultdict
 import os
+from io import BytesIO
+
+from openpyxl import load_workbook
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -72,6 +77,66 @@ def strfdelta(tdelta, fmt):
     d["hours"], rem = divmod(tdelta.seconds, 3600)
     d["minutes"], d["seconds"] = divmod(rem, 60)
     return fmt.format(**d)
+
+
+def connect_to_gdrive():
+    gauth = GoogleAuth()
+    # Try to load saved client credentials
+    gauth.LoadCredentialsFile(f"{os.path.dirname(os.path.abspath(__file__))}/../mycreds.txt")
+    if gauth.credentials is None:
+        # Authenticate if they're not there
+        gauth.CommandLineAuth()
+    elif gauth.access_token_expired:
+        # Refresh them if expired
+        gauth.Refresh()
+    else:
+        # Initialize the saved creds
+        gauth.Authorize()
+    # Save the current credentials to a file
+    gauth.SaveCredentialsFile(f"{os.path.dirname(os.path.abspath(__file__))}/../mycreds.txt")
+    drive = GoogleDrive(gauth)
+    return drive
+
+
+def get_file_from_path(path):
+    path_parts = path.split('/')
+    drive = connect_to_gdrive()
+    folder_id = 'root'
+    for folder_name in path_parts[:-1]:
+        folder_list = drive.ListFile({'q': f"'{folder_id}' in parents and trashed=false"}).GetList()
+        folder = folder_list[[f['title'] for f in folder_list].index(folder_name)]
+        folder_id = folder['id']
+    file_list = drive.ListFile({'q': f"'{folder_id}' in parents and trashed=false"}).GetList()
+    file = file_list[[f['title'] for f in file_list].index(path_parts[-1])]
+    file.GetContentFile(file['title'])
+    return file.content
+
+
+def save_file_to_path(path):
+    path_parts = path.split('/')
+    filename = path_parts[-1]
+    drive = connect_to_gdrive()
+    folder_id = 'root'
+    for folder_name in path_parts[:-1]:
+        folder_list = drive.ListFile({'q': f"'{folder_id}' in parents and trashed=false"}).GetList()
+        folder = folder_list[[f['title'] for f in folder_list].index(folder_name)]
+        folder_id = folder['id']
+    file_list = drive.ListFile({'q': f"'{folder_id}' in parents and trashed=false"}).GetList()
+    file = file_list[[f['title'] for f in file_list].index(path_parts[-1])]
+    file.SetContentFile(filename)
+    file.Upload()
+
+
+def upload_exp_results_to_gdrive(results_line, path):
+    file = get_file_from_path(path)
+    wb = load_workbook(filename=BytesIO(file.read()))
+    wb.active = 0
+    results = wb.active
+    results.append(results_line)
+    wb.save(filename=path.split('/')[-1])
+    save_file_to_path(path)
+    os.remove(path.split('/')[-1])
+
 
 # ---------------------------------------------------------------------------------------------------------
 # Define your NAS Problem
@@ -239,6 +304,7 @@ def add_exp(all_exps, run, dataset, iteration, search_space):
     all_exps['result'].append(run.result)
     all_exps['runtime'].append(strfdelta(run.stop_time - run.start_time, '{hours}:{minutes}:{seconds}'))
     all_exps['omniboard_id'].append(run._id)
+    return [lst[-1] for lst in all_exps.values()]
 
 
 if __name__ == '__main__':
@@ -276,7 +342,9 @@ if __name__ == '__main__':
                 set_config('micro_creator', ResidualNode)
                 ex.add_config({'DEFAULT':{'dataset': dataset}})
                 run = ex.run(options={'--name': f'NSGA_{dataset}_{args.search_space}'})
-                add_exp(all_exps, run, dataset, iteration, args.search_space)
+                exp_line = add_exp(all_exps, run, dataset, iteration, args.search_space)
+                if not args.debug_mode:
+                    upload_exp_results_to_gdrive(exp_line, 'University/Masters/Experiment Results/EEGNAS_results.xlsx')
                 if first:
                     first_run_id = run._id
                     first = False

@@ -139,10 +139,11 @@ class AuxiliaryHeadImageNet(nn.Module):
 
 class NetworkCIFAR(nn.Module):
 
-    def __init__(self, C, num_classes, num_channels, layers, auxiliary, genotype, SE=False):
+    def __init__(self, C, num_classes, num_channels, layers, auxiliary, genotype, SE=False, single_output=False):
         super(NetworkCIFAR, self).__init__()
         self._layers = layers
         self._auxiliary = auxiliary
+        self.single_output = single_output
 
         stem_multiplier = 3
         C_curr = stem_multiplier * C
@@ -184,7 +185,10 @@ class NetworkCIFAR(nn.Module):
                     logits_aux = self.auxiliary_head(s1)
         out = self.global_pooling(s1)
         logits = self.classifier(out.view(out.size(0), -1))
-        return logits, logits_aux
+        if self.single_output:
+            return logits
+        else:
+            return logits, logits_aux
 
 
 class PyramidNetworkCIFAR(nn.Module):
