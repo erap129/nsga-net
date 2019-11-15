@@ -55,6 +55,7 @@ parser.add_argument('--layers', type=int, default=11, help='equivalent with N = 
 parser.add_argument('--epochs', type=int, default=25, help='# of epochs to train during architecture search')
 parser.add_argument('--datasets', type=str, default='Cricket', help='datasets to run on')
 parser.add_argument('--iterations', type=int, default=3, help='times to run each experiment')
+parser.add_argument('--batch_size', type=int, default=128, help='batch size for tested networks')
 parser.add_argument("-dm", "--debug_mode", action='store_true', help="debug mode, don't save results to disk")
 
 log_format = '%(asctime)s %(message)s'
@@ -144,7 +145,7 @@ def upload_exp_results_to_gdrive(results_line, path):
 class NAS(Problem):
     # first define the NAS problem (inherit from pymop)
     def __init__(self, search_space='micro', n_var=20, n_obj=1, n_constr=0, lb=None, ub=None,
-                 init_channels=24, layers=8, epochs=25, save_dir=None):
+                 init_channels=24, layers=8, epochs=25, save_dir=None, batch_size=128):
         super().__init__(n_var=n_var, n_obj=n_obj, n_constr=n_constr, type_var=np.int)
         self.xl = lb
         self.xu = ub
@@ -154,6 +155,7 @@ class NAS(Problem):
         self._epochs = epochs
         self._save_dir = save_dir
         self._n_evaluated = 0  # keep track of how many architectures are sampled
+        self.batch_size = batch_size
 
     def _evaluate(self, x, out, *args, **kwargs):
 
@@ -184,7 +186,8 @@ class NAS(Problem):
                                             layers=self._layers, cutout=False,
                                             epochs=self._epochs,
                                             save='arch_{}'.format(arch_id),
-                                            expr_root=self._save_dir)
+                                            expr_root=self._save_dir,
+                                            batch_size=self.batch_size)
 
             # all objectives assume to be MINIMIZED !!!!!
             objs[i, 0] = 100 - performance['valid_acc']
@@ -272,7 +275,7 @@ def main():
         problem = NAS(n_var=n_var, search_space=exp_type,
                       n_obj=2, n_constr=0, lb=lb, ub=ub,
                       init_channels=args.init_channels, layers=args.layers,
-                      epochs=args.epochs, save_dir=save_dir)
+                      epochs=args.epochs, save_dir=save_dir, batch_size=args.batch_size)
 
         # configure the nsga-net method
         method = engine.nsganet(pop_size=args.pop_size,
@@ -285,12 +288,12 @@ def main():
                        termination=('n_gen', args.n_gens))
 
         val_accs = res.pop.get('F')[:, 0]
-        if exp_type == 'micro':
-            best_idx = np.where(val_accs == np.min(val_accs))[0][0]
-            best_genome = res.pop[best_idx].X
-            with open(f'{save_dir}/best_genome.pkl', 'wb') as pkl_file:
-                pickle.dump(best_genome, pkl_file)
-            set_config('micro_creator', make_micro_creator(best_genome))
+        # if exp_type == 'micro':
+        #     best_idx = np.where(val_accs == np.min(val_accs))[0][0]
+        #     best_genome = res.pop[best_idx].X
+        #     with open(f'{save_dir}/best_genome.pkl', 'wb') as pkl_file:
+        #         pickle.dump(best_genome, pkl_file)
+        #     set_config('micro_creator', make_micro_creator(best_genome))
 
     return (100 - np.min(val_accs)) / 100
 

@@ -32,7 +32,7 @@ device = 'cuda'
 
 def main(macro_genome, micro_genome, epochs, search_space='micro',
          save='Design_1', expr_root='search', seed=0, gpu=0, init_channels=24,
-         layers=11, auxiliary=False, cutout=False, drop_path_prob=0.0):
+         layers=11, auxiliary=False, cutout=False, drop_path_prob=0.0, batch_size=128):
 
     # ---- train logger ----------------- #
     save_pth = os.path.join(expr_root, '{}'.format(save))
@@ -48,7 +48,6 @@ def main(macro_genome, micro_genome, epochs, search_space='micro',
     momentum = 0.9
     weight_decay = 3e-4
     data_root = '../data'
-    batch_size = 128
     cutout_length = 16
     auxiliary_weight = 0.4
     grad_clip = 5
