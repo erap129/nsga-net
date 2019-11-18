@@ -10,6 +10,7 @@ from io import BytesIO
 from openpyxl import load_workbook
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
+from pymoo.model.termination import Termination
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -56,6 +57,8 @@ parser.add_argument('--epochs', type=int, default=25, help='# of epochs to train
 parser.add_argument('--datasets', type=str, default='Cricket', help='datasets to run on')
 parser.add_argument('--iterations', type=int, default=3, help='times to run each experiment')
 parser.add_argument('--batch_size', type=int, default=128, help='batch size for tested networks')
+parser.add_argument('--termination', type=str, default='ngens', help='termination condition for evolutionary algorithms')
+parser.add_argument('--max_time', type=int, default=86400, help='max. runtime if set to time terminations')
 parser.add_argument("-dm", "--debug_mode", action='store_true', help="debug mode, don't save results to disk")
 
 log_format = '%(asctime)s %(message)s'
@@ -72,6 +75,17 @@ ex.add_config(config_dict())
 # dataset = ArticularyWordRecognition,AtrialFibrillation,BasicMotions,CharacterTrajectories,Cricket,DuckDuckGeese,EigenWorms,Epilepsy,ERing,EthanolConcentration,FaceDetection,FingerMovements,HandMovementDirection,Handwriting,Heartbeat,InsectWingbeat,JapaneseVowels,Libras,LSST,MotorImagery,NATOPS,PEMS-SF,PenDigits,PhonemeSpectra,RacketSports,SelfRegulationSCP1,SelfRegulationSCP2,SpokenArabicDigits,StandWalkJump,UWaveGestureLibrary
 # EEG_dataset_1 = BCI_IV_2a,BCI_IV_2b,HG
 # EEG dataset_2 = NER15,Opportunity,MentalImageryLongWords
+
+
+class TimeTermination(Termination):
+    def __init__(self, start_time, n_max_seconds) -> None:
+        super().__init__()
+        self.start_time = start_time
+        self.n_max_seconds = n_max_seconds
+
+    def _do_continue(self, algorithm):
+        return (time.time() - self.start_time) <= self.n_max_seconds
+
 
 def strfdelta(tdelta, fmt):
     d = {"days": tdelta.days}
@@ -282,10 +296,15 @@ def main():
                                 n_offsprings=args.n_offspring,
                                 eliminate_duplicates=True)
 
+        if args.termination == 'ngens':
+            termination = ('n_gen', args.n_gens)
+        elif args.termination == 'time':
+            termination = TimeTermination(time.time(), args.max_time)
+
         res = minimize(problem,
                        method,
                        callback=do_every_generations,
-                       termination=('n_gen', args.n_gens))
+                       termination=termination)
 
         val_accs = res.pop.get('F')[:, 0]
         # if exp_type == 'micro':
@@ -348,10 +367,10 @@ if __name__ == '__main__':
                 exp_line = add_exp(all_exps, run, dataset, iteration, args.search_space)
                 if not args.debug_mode:
                     upload_exp_results_to_gdrive(exp_line, 'University/Masters/Experiment Results/EEGNAS_results.xlsx')
+                    pd.DataFrame(all_exps).to_csv(f'reports/{first_run_id}.csv', index=False)
                 if first:
                     first_run_id = run._id
                     first = False
-                pd.DataFrame(all_exps).to_csv(f'reports/{first_run_id}.csv', index=False)
             except Exception as e:
                 print(f'failed dataset {dataset} iteration {iteration}')
                 traceback.print_exc()
