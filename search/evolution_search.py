@@ -185,8 +185,16 @@ class NAS(Problem):
                 micro_genome = micro_encoding.convert(x[i, :])
                 macro_genome = None
 
+            elif self._search_space == 'micro_garbage':
+                micro_genome = micro_encoding.convert(x[i, 21:])
+                macro_genome = None
+
             elif self._search_space == 'macro':
                 macro_genome = macro_encoding.convert(x[i, :])
+                micro_genome = None
+
+            elif self._search_space == 'macro_garbage':
+                macro_genome = macro_encoding.convert(x[i, :21])
                 micro_genome = None
 
             elif self._search_space == 'micromacro':
@@ -277,7 +285,7 @@ def main():
             n_var, lb, ub = set_micro_exp(args)
         elif exp_type == 'macro':  # modified GeneticCNN search space
             n_var, lb, ub = set_macro_exp(args)
-        elif exp_type == 'micromacro':  # modified GeneticCNN search space
+        elif exp_type == 'micromacro' or exp_type == 'micro_garbage' or exp_type == 'macro_garbage':  # modified GeneticCNN search space
             n_var_mac, lb_mac, ub_mac = set_macro_exp(args)
             n_var_mic, lb_mic, ub_mic = set_micro_exp(args)
             n_var = n_var_mic + n_var_mac

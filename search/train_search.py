@@ -59,11 +59,11 @@ def main(macro_genome, micro_genome, epochs, search_space='micro',
         'report_freq': report_freq,
     }
 
-    if search_space == 'micro':
+    if search_space == 'micro' or search_space == 'micro_garbage':
         genome = micro_genome
         genotype = micro_encoding.decode(genome)
         model = Network(init_channels, CIFAR_CLASSES, config_dict()['n_channels'], layers, auxiliary, genotype)
-    elif search_space == 'macro':
+    elif search_space == 'macro' or search_space == 'macro_garbage':
         genome = macro_genome
         genotype = macro_encoding.decode(genome)
         channels = [(INPUT_CHANNELS, init_channels),
