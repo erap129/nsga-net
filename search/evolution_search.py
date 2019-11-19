@@ -315,12 +315,13 @@ def main():
                        termination=termination)
 
         val_accs = res.pop.get('F')[:, 0]
-        # if exp_type == 'micro':
-        #     best_idx = np.where(val_accs == np.min(val_accs))[0][0]
-        #     best_genome = res.pop[best_idx].X
-        #     with open(f'{save_dir}/best_genome.pkl', 'wb') as pkl_file:
-        #         pickle.dump(best_genome, pkl_file)
-        #     set_config('micro_creator', make_micro_creator(best_genome))
+
+        if exp_type == 'micro->macro':
+            best_idx = np.where(val_accs == np.min(val_accs))[0][0]
+            best_genome = res.pop[best_idx].X
+            with open(f'{save_dir}/best_genome.pkl', 'wb') as pkl_file:
+                pickle.dump(best_genome, pkl_file)
+            set_config('micro_creator', make_micro_creator(best_genome))
 
     return (100 - np.min(val_accs)) / 100
 
@@ -365,6 +366,8 @@ if __name__ == '__main__':
                 set_config('n_channels', x_train.shape[1])
                 if 'exp_order' not in config_dict():
                     set_config('exp_order', [args.search_space])
+                if args.search_space == 'micro->macro':
+                    set_config('exp_order', ['micro', 'macro'])
                 if y_train.ndim > 1:
                     set_config('n_classes', y_train.shape[1])
                 else:
