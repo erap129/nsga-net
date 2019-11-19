@@ -316,7 +316,7 @@ def main():
 
         val_accs = res.pop.get('F')[:, 0]
 
-        if exp_type == 'micro->macro':
+        if exp_type == 'microtomacro':
             best_idx = np.where(val_accs == np.min(val_accs))[0][0]
             best_genome = res.pop[best_idx].X
             with open(f'{save_dir}/best_genome.pkl', 'wb') as pkl_file:
@@ -366,7 +366,7 @@ if __name__ == '__main__':
                 set_config('n_channels', x_train.shape[1])
                 if 'exp_order' not in config_dict():
                     set_config('exp_order', [args.search_space])
-                if args.search_space == 'micro->macro':
+                if args.search_space == 'microtomacro':
                     set_config('exp_order', ['micro', 'macro'])
                 if y_train.ndim > 1:
                     set_config('n_classes', y_train.shape[1])
