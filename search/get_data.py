@@ -15,12 +15,10 @@ else:
     import pickle
 
 import torch.utils.data as data
-# from .utils import download_url, check_integrity
 
 import errno
 import hashlib
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
-# from config import config_dict
 
 
 def check_integrity(fpath, md5):
@@ -98,10 +96,6 @@ class CIFAR10(data.Dataset):
         ['data_batch_5', '482c414d41f54cd18b22e5b47cb7c3cb'],
     ]
 
-    # original cifar 10 test set
-    # test_list = [
-    #     ['test_batch', '40351d587109b95175f43aff81a1287e'],
-    # ]
 
     def __init__(self, root, train=True,
                  transform=None, target_transform=None,
@@ -114,60 +108,52 @@ class CIFAR10(data.Dataset):
         if download:
             self.download()
 
-        # if not self._check_integrity():
-        #     raise RuntimeError('Dataset not found or corrupted.' +
-        #                        ' You can use download=True to download it')
-
-        # now load the picked numpy arrays
         if self.train:
-            # self.train_data = []
-            # self.train_labels = []
-            # for fentry in self.train_list:
-            #     f = fentry[0]
-            #     file = os.path.join(self.root, self.base_folder, f)
-            #     fo = open(file, 'rb')
-            #     if sys.version_info[0] == 2:
-            #         entry = pickle.load(fo)
-            #     else:
-            #         entry = pickle.load(fo, encoding='latin1')
-            #     self.train_data.append(entry['data'])
-            #     if 'labels' in entry:
-            #         self.train_labels += entry['labels']
-            #     else:
-            #         self.train_labels += entry['fine_labels']
-            #     fo.close()
-            #
-            # self.train_data = np.concatenate(self.train_data)
+            if config_dict()["dataset"] == 'cifar10':
+                self.train_data = []
+                self.train_labels = []
+                for fentry in self.train_list:
+                    f = fentry[0]
+                    file = os.path.join(self.root, self.base_folder, f)
+                    fo = open(file, 'rb')
+                    if sys.version_info[0] == 2:
+                        entry = pickle.load(fo)
+                    else:
+                        entry = pickle.load(fo, encoding='latin1')
+                    self.train_data.append(entry['data'])
+                    if 'labels' in entry:
+                        self.train_labels += entry['labels']
+                    else:
+                        self.train_labels += entry['fine_labels']
+                    fo.close()
 
-            # self.train_data = np.load(f'../data/{config_dict["dataset"]}_{config_dict["data_type"]}/X_train_{config_dict["dataset"]}.npy')
-            self.train_data = np.load(f'{FILE_PATH}/../data/{config_dict()["dataset"]}/X_train.npy')
-            if self.train_data.ndim == 3:
-                self.train_data = self.train_data[:, :, :, None]
-            # self.train_labels = np.load(f'../data/{config_dict["dataset"]}_{config_dict["data_type"]}/y_train_{config_dict["dataset"]}.npy').tolist()
-            self.train_labels = np.load(f'{FILE_PATH}/../data/{config_dict()["dataset"]}/y_train.npy')
+                self.train_data = np.concatenate(self.train_data)
+            else:
+                self.train_data = np.load(f'{FILE_PATH}/../data/{config_dict()["dataset"]}/X_train.npy')
+                if self.train_data.ndim == 3:
+                    self.train_data = self.train_data[:, :, :, None]
+                self.train_labels = np.load(f'{FILE_PATH}/../data/{config_dict()["dataset"]}/y_train.npy')
 
         else:
-            # f = self.test_list[0][0]
-            # file = os.path.join(self.root, self.base_folder, f)
-            # fo = open(file, 'rb')
-            # if sys.version_info[0] == 2:
-            #     entry = pickle.load(fo)
-            # else:
-            #     entry = pickle.load(fo, encoding='latin1')
-            # self.test_data = entry['data']
-            # if 'labels' in entry:
-            #     self.test_labels = entry['labels']
-            # else:
-            #     self.test_labels = entry['fine_labels']
-            # fo.close()
-
-            # self.test_data = np.load(f'../data/{config_dict["dataset"]}_{config_dict["data_type"]}/X_test_{config_dict["dataset"]}.npy')
-            self.test_data = np.load(f'{FILE_PATH}/../data/{config_dict()["dataset"]}/X_test.npy')
-            if self.test_data.ndim == 3:
-                self.test_data = self.test_data[:, :, :, None]
-            # self.test_labels = np.load(f'../data/{config_dict["dataset"]}_{config_dict["data_type"]}/X_test_{config_dict["dataset"]}.npy').tolist()
-            self.test_labels = np.load(f'{FILE_PATH}/../data/{config_dict()["dataset"]}/y_test.npy')
-
+            if config_dict()["dataset"] == 'cifar10':
+                f = self.test_list[0][0]
+                file = os.path.join(self.root, self.base_folder, f)
+                fo = open(file, 'rb')
+                if sys.version_info[0] == 2:
+                    entry = pickle.load(fo)
+                else:
+                    entry = pickle.load(fo, encoding='latin1')
+                self.test_data = entry['data']
+                if 'labels' in entry:
+                    self.test_labels = entry['labels']
+                else:
+                    self.test_labels = entry['fine_labels']
+                fo.close()
+            else:
+                self.test_data = np.load(f'{FILE_PATH}/../data/{config_dict()["dataset"]}/X_test.npy')
+                if self.test_data.ndim == 3:
+                    self.test_data = self.test_data[:, :, :, None]
+                self.test_labels = np.load(f'{FILE_PATH}/../data/{config_dict()["dataset"]}/y_test.npy')
 
     def __getitem__(self, index):
         """

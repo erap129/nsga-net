@@ -302,11 +302,13 @@ if __name__ == '__main__':
     import misc.utils as utils
     import models.micro_genotypes as genotypes
 
-    genome = genotypes.DARTS
+    genome = genotypes.SimpleGenotype
     # model = AlterPyramidNetworkCIFAR(30, 10, 20, True, genome, 6, SE=False)
 
     data = torch.randn(16, 3, 32, 32)
-    model = PyramidNetworkCIFAR(48, 10, 20, True, genome, 22, SE=True)
+
+    model = NetworkCIFAR(C=48, num_classes=10, num_channels=3, layers=9, auxiliary=True, genotype=genome, SE=True)
+
     # model = NetworkCIFAR(34, 10, 20, True, genome, SE=True)
     # model = GradPyramidNetworkCIFAR(34, 10, 20, True, genome, 4)
     model.droprate = 0.0

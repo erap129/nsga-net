@@ -24,6 +24,7 @@ import time
 import logging
 import argparse
 from misc import utils
+from validation import train
 
 import numpy as np
 from search import train_search
@@ -59,7 +60,28 @@ parser.add_argument('--iterations', type=int, default=3, help='times to run each
 parser.add_argument('--batch_size', type=int, default=128, help='batch size for tested networks')
 parser.add_argument('--termination', type=str, default='ngens', help='termination condition for evolutionary algorithms')
 parser.add_argument('--max_time', type=int, default=86400, help='max. runtime if set to time terminations')
+parser.add_argument('--problem', type=str, default='search', help='perform architecture search or test existing model?')
 parser.add_argument("-dm", "--debug_mode", action='store_true', help="debug mode, don't save results to disk")
+
+# evaluation args
+parser.add_argument('--data', type=str, default='../data', help='location of the data corpus')
+parser.add_argument('--learning_rate', type=float, default=0.025, help='init learning rate')
+parser.add_argument('--min_learning_rate', type=float, default=0.0, help='minimum learning rate')
+parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
+parser.add_argument('--weight_decay', type=float, default=3e-4, help='weight decay')
+parser.add_argument('--report_freq', type=float, default=50, help='report frequency')
+parser.add_argument('--grad_clip', type=float, default=5, help='gradient clipping')
+parser.add_argument('--cutout', action='store_true', default=False, help='use cutout')
+parser.add_argument('--cutout_length', type=int, default=16, help='cutout length')
+parser.add_argument('--auxiliary', action='store_true', default=False, help='use auxiliary tower')
+parser.add_argument('--auxiliary_weight', type=float, default=0.4, help='weight for auxiliary loss')
+# parser.add_argument('--layers', default=20, type=int, help='total number of layers (equivalent w/ N=6)')
+parser.add_argument('--droprate', default=0, type=float, help='dropout probability (default: 0.0)')
+# parser.add_argument('--init_channels', type=int, default=32, help='num of init channels')
+parser.add_argument('--arch', type=str, default='NSGANet', help='which architecture to use')
+parser.add_argument('--filter_increment', default=4, type=int, help='# of filter increment')
+parser.add_argument('--SE', action='store_true', default=False, help='use Squeeze-and-Excitation')
+parser.add_argument('--net_type', type=str, default='macro', help='(options)micro, macro')
 
 log_format = '%(asctime)s %(message)s'
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
@@ -268,8 +290,7 @@ def set_macro_exp(args):
     return n_var, lb, ub
 
 
-@ex.main
-def main():
+def evolution_search():
     for exp_type in config_dict()['exp_order']:
         save_dir = f'{os.path.dirname(os.path.abspath(__file__))}/search-{args.save}-{exp_type}-{time.strftime("%Y%m%d-%H%M%S")}'
         utils.create_exp_dir(save_dir)
@@ -326,8 +347,23 @@ def main():
     return (100 - np.min(val_accs)) / 100
 
 
+@ex.main
+def main():
+    if args.problem == 'evaluate':
+        args.epochs = 600
+        args.batch_size = 96
+        best_acc = train.main(args)
+        return best_acc
+
+    elif args.problem == 'search':
+        return evolution_search()
+
+
+
 def add_exp(all_exps, run, dataset, iteration, search_space):
     all_exps['algorithm'].append(f'NSGA_{search_space}')
+    if args.problem == 'evaluate':
+        all_exps['algorithm'][-1] += '_evaluate'
     all_exps['architecture'].append('best')
     all_exps['measure'].append('accuracy')
     all_exps['dataset'].append(dataset)

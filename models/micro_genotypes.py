@@ -71,6 +71,19 @@ AmoebaNet = Genotype(
     reduce_concat=[3, 4, 6]
 )
 
+SimpleGenotype = Genotype(
+    normal=[
+        ('sep_conv_3x3', 0),
+        ('sep_conv_3x3', 1),
+    ],
+    normal_concat=[2],
+    reduce=[
+        ('sep_conv_3x3', 0),
+        ('sep_conv_3x3', 1),
+    ],
+    reduce_concat=[2]
+)
+
 DARTS = Genotype(
     normal=[
         ('sep_conv_3x3', 0),

@@ -18,7 +18,7 @@ import torchvision.transforms as transforms
 from models.macro_models import EvoNetwork
 from models.micro_models import NetworkCIFAR as Network
 
-import search.cifar10_search as my_cifar10
+import search.get_data as my_cifar10
 
 import time
 from misc import utils
