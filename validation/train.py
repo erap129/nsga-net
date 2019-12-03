@@ -28,9 +28,9 @@ from models import macro_genotypes
 from models.macro_models import EvoNetwork
 import models.micro_genotypes as genotypes
 from models.micro_models import PyramidNetworkCIFAR as PyrmNASNet, NetworkCIFAR
-
+# from torch.utils.tensorboard import SummaryWriter
 device = 'cuda'
-
+# writer = SummaryWriter(f'{os.path.dirname(os.path.abspath(__file__))}/../tensorboard')
 
 def main(args):
     save_dir = f'{os.path.dirname(os.path.abspath(__file__))}/../train/train-{args.save}-{time.strftime("%Y%m%d-%H%M%S")}'

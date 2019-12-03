@@ -87,7 +87,7 @@ log_format = '%(asctime)s %(message)s'
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format=log_format, datefmt='%m/%d %I:%M:%S %p')
 
-SERVER_IP = '132.72.80.67'
+SERVER_IP = '132.72.81.248'
 
 pop_hist = []  # keep track of every evaluated architecture
 ex = Experiment()
@@ -357,7 +357,6 @@ def main():
 
     elif args.problem == 'search':
         return evolution_search()
-
 
 
 def add_exp(all_exps, run, dataset, iteration, search_space):
