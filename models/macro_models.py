@@ -55,8 +55,9 @@ class EvoNetwork(nn.Module):
         # After the evolved part of the network, we would like to do global average pooling and a linear layer.
         # However, we don't know the output size so we do some forward passes and observe the output sizes.
         #
-
+        self.model.eval()
         out = self.model(torch.autograd.Variable(torch.zeros(1, channels[0][0], *data_shape)))
+        self.model.train()
         shape = out.data.shape
 
         self.gap = nn.AvgPool2d(kernel_size=(shape[-2], shape[-1]), stride=1)
