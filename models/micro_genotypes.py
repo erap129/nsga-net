@@ -84,6 +84,33 @@ SimpleGenotype = Genotype(
     reduce_concat=[2]
 )
 
+NetflowMultiHandover = Genotype(
+    normal=[
+        ('max_pool_3x3', 0),
+        ('max_pool_3x3', 0),
+        ('skip_connect', 2),
+        ('dil_conv_5x5', 2),
+        ('avg_pool_3x3', 3),
+        ('max_pool_3x3', 3),
+        ('skip_connect', 0),
+        ('dil_conv_3x3', 0),
+        ('sep_conv_5x5', 3),
+        ('skip_connect', 1)],
+    normal_concat=[4, 5, 6],
+    reduce=[
+        ('max_pool_3x3', 1),
+        ('max_pool_3x3', 0),
+        ('conv_7x1_1x7', 2),
+        ('dil_conv_5x5', 1),
+        ('max_pool_3x3', 3),
+        ('avg_pool_3x3', 2),
+        ('skip_connect', 4),
+        ('conv_7x1_1x7', 3),
+        ('skip_connect', 0),
+        ('max_pool_3x3', 2)],
+    reduce_concat=[5, 6]
+)
+
 DARTS = Genotype(
     normal=[
         ('sep_conv_3x3', 0),
