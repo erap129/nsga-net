@@ -56,7 +56,7 @@ parser.add_argument('--init_channels', type=int, default=24, help='# of filters 
 parser.add_argument('--layers', type=int, default=11, help='equivalent with N = 3')
 parser.add_argument('--epochs', type=int, default=25, help='# of epochs to train during architecture search')
 parser.add_argument('--datasets', type=str, default='Cricket', help='datasets to run on')
-parser.add_argument('--iterations', type=int, default=3, help='times to run each experiment')
+parser.add_argument('--iterations', type=int, default=1, help='times to run each experiment')
 parser.add_argument('--batch_size', type=int, default=128, help='batch size for tested networks')
 parser.add_argument('--termination', type=str, default='ngens', help='termination condition for evolutionary algorithms')
 parser.add_argument('--max_time', type=int, default=86400, help='max. runtime if set to time terminations')
@@ -292,7 +292,7 @@ def set_macro_exp(args):
 
 def evolution_search():
     for exp_type in config_dict()['exp_order']:
-        save_dir = f'{os.path.dirname(os.path.abspath(__file__))}/search-{args.save}-{exp_type}-{time.strftime("%Y%m%d-%H%M%S")}'
+        save_dir = f'{os.path.dirname(os.path.abspath(__file__))}/search-{args.save}-{exp_type}-{dataset}-{time.strftime("%Y%m%d-%H%M%S")}'
         utils.create_exp_dir(save_dir)
         fh = logging.FileHandler(os.path.join(save_dir, 'log.txt'))
         fh.setFormatter(logging.Formatter(log_format))
